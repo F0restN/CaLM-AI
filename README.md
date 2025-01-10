@@ -2,6 +2,8 @@
 
 An intelligent RAG (Retrieval-Augmented Generation) system designed to assist caregivers of patients with Alzheimer's Disease and Related Dementias (ADRD). This system leverages local LLMs through Ollama and Langchain to provide contextual, accurate, and helpful information for family caregivers.
 
+![Rag workflow](./public/calm-workflow.png)
+
 ## 🌟 Features
 
 - **Specialized Knowledge Base**: Curated information focused on ADRD caregiving
