@@ -1,6 +1,6 @@
 import json
 from typing import Literal, Union
-from logger import logger
+from utils.logger import logger
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama

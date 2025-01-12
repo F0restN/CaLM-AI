@@ -4,6 +4,10 @@ An intelligent RAG (Retrieval-Augmented Generation) system designed to assist ca
 
 ![Rag workflow](./public/calm-workflow.png)
 
+## 📚 Documentation
+
+Add project src folder to python path
+
 ## 🌟 Features
 
 - **Specialized Knowledge Base**: Curated information focused on ADRD caregiving
