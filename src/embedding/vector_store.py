@@ -1,7 +1,4 @@
 import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import shutil
 from typing import List
 from langchain_chroma import Chroma
@@ -16,7 +13,7 @@ class VectorStore:
         self,
         docs: List[Document], 
         embedding_model,
-        collection_name: str = "calm_kb",
+        # collection_name: str = "calm_kb",
         vectorstore_path: str = None, 
         force_rebuild: bool = False
     ) -> Chroma:
@@ -36,21 +33,20 @@ class VectorStore:
             shutil.rmtree(vectorstore_path)
             logger.info(f"Vector store {vectorstore_path} already exists and force_rebuild is True. Rebuilding...")
             
-        # try:
-        #     vectorstore = Chroma.from_documents(
-        #         documents=docs,
-        #         embedding=embedding_model,
-        #         collection_name=collection_name,
-        #         persist_directory=vectorstore_path,
-        #     )
-        #     logger.info(f"Vector store built successfully at {vectorstore_path}")
-        #     return vectorstore
-        # except Exception as e:
-        #     logger.error(f"Failed to build vector store: {str(e)}")
-        #     raise
-        
-        
-        
+        logger.info(f"Building vector store with {len(docs)} documents")
+            
+        try:
+            vectorstore = Chroma.from_documents(
+                documents=docs,
+                embedding=embedding_model,
+                # collection_name=collection_name,
+                persist_directory=vectorstore_path,
+            )
+            logger.info(f"Vector store built successfully at {vectorstore_path}")
+            return vectorstore
+        except Exception as e:
+            logger.error(f"Failed to build vector store: {str(e)}")
+            raise
 
     def get_chroma_vectorstore(vectorstore_path: str = None, embedding=None) -> Chroma:
         """
@@ -99,14 +95,11 @@ class VectorStore:
             raise
         
 if __name__ == "__main__":
-
     from embedding_models import EmbeddingModels
     
-    project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))));
-    vectorestore_path = os.path.join(project_dir, "data", "vector_database", "peer_kb");
-    print(vectorestore_path)
-        
+    vectorestore_path = "./data/vector_database/peer_kb";
     embedding_model = EmbeddingModels().get_bge_embedding('BAAI/bge-m3');
+        
     chroma_kb = VectorStore.get_chroma_vectorstore(
         vectorstore_path=vectorestore_path,
         embedding=embedding_model
