@@ -30,7 +30,7 @@ def generate_answer(
         model: Name of the Ollama model
         temperature: Model temperature
     """
-    if not question or not context_chunks:
+    if not question:
         logger.error("Missing question or context")
         raise ValueError("Question and context required")
 

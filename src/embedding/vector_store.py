@@ -105,7 +105,7 @@ if __name__ == "__main__":
         embedding=embedding_model
     )
     
-    query = 'what is ADRD'
+    query = 'what is the specialty for Chinese language. '
     docs = VectorStore.retrieve_docs(query=query, vectorstore=chroma_kb)
     
     for doc in docs:

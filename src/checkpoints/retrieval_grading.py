@@ -74,7 +74,7 @@ def grade_retrieval(
             )
             parsed_result = json.loads(result.content)
             results.append(parsed_result)
-            logger.info(f"Grading result: {parsed_result}")
+            # logger.info(f"Grading result: {parsed_result}")
         except json.JSONDecodeError:
             logger.warning("Could not parse LLM response as JSON")
             results.append({
