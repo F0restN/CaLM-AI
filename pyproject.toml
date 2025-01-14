@@ -12,8 +12,8 @@ langchain-community = "^0.3.13"
 langchain-nomic = "^0.1.4"
 langchain-ollama = "^0.2.2"
 langchain-chroma = "^0.1.4"
-pyarrow = "^18.1.0"
 langchain-huggingface = "^0.1.2"
+pyarrow = "^18.1.0"
 einops = "^0.8.0"
 loguru = "^0.7.3"
 bs4 = "^0.0.2"
@@ -21,6 +21,7 @@ crawl4ai = {extras = ["all"], version = "^0.4.246"}
 marker-pdf = "^1.2.3"
 ipykernel = "^6.29.5"
 setuptools = "^75.7.0"
+langgraph = "^0.2.62"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -37,6 +38,7 @@ disable = [
 ]
 good-names = ["i", "j", "k", "ex", "Run", "_", "fp", "id"]
 ignore-patterns = ["test_.*?py"]
+ignore = ["*.md", "*.txt"]
 
 [tool.pylint.format]
 indent-after-paren = 4
