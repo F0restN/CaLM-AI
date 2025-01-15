@@ -1,10 +1,13 @@
 import os
 import shutil
 from typing import List
+
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
+
 from utils.logger import logger
+from utils.tools import pretty_print_list_docs
 
 
 class VectorStore:
@@ -50,9 +53,10 @@ class VectorStore:
             return vectorstore
         except Exception as e:
             logger.error(f"Failed to build vector store: {str(e)}")
-            raise
+            raise RuntimeError(
+                f"Failed to build vector store: {str(e)}") from e
 
-    def get_chroma_vectorstore(vectorstore_path: str = None, embedding: HuggingFaceEmbeddings = None) -> Chroma:
+    def get_chroma_vectorstore(self, vectorstore_path: str = None, embedding: HuggingFaceEmbeddings = None) -> Chroma:
         """
         Load ChromaDB vector store from persistent directory
 
@@ -86,9 +90,9 @@ class VectorStore:
             return db
         except Exception as e:
             logger.error(f"ChromaDB load failed: {str(e)}")
-            raise RuntimeError(f"ChromaDB error: {str(e)}")
+            raise RuntimeError(f"ChromaDB error: {str(e)}") from e
 
-    def retrieve_docs(query: str, vectorstore: Chroma, k: int = 10) -> List[Document]:
+    def retrieve_docs(self, query: str, vectorstore: Chroma, k: int = 10) -> List[Document]:
         """
         Retrieve documents from vector store
         """
@@ -102,19 +106,18 @@ class VectorStore:
 
 
 if __name__ == "__main__":
-    from .embedding_models import EmbeddingModels
+    from embedding_models import EmbeddingModels  # Fixed relative import
 
-    vectorestore_path = "./data/vector_database/peer_kb"
+    vectorstore_path = "./data/vector_database/peer_kb"  # Fixed typo in variable name
     embedding_model = EmbeddingModels().get_bge_embedding('BAAI/bge-m3')
 
-    chroma_kb = VectorStore.get_chroma_vectorstore(
-        vectorstore_path=vectorestore_path,
+    vector_store = VectorStore()
+    chroma_kb = vector_store.get_chroma_vectorstore(
+        vectorstore_path=vectorstore_path,
         embedding=embedding_model
     )
 
-    query = 'what is the specialty for Chinese language. '
-    docs = VectorStore.retrieve_docs(query=query, vectorstore=chroma_kb)
+    query = 'what is the specialty for Chinese language.'
+    docs = vector_store.retrieve_docs(query=query, vectorstore=chroma_kb)
 
-    for doc in docs:
-        print(doc.page_content)
-        print(doc.metadata)
+    pretty_print_list_docs(docs)

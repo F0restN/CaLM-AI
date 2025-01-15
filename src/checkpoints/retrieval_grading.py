@@ -3,6 +3,8 @@ from typing import List, Dict, Any
 from utils.logger import logger
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
+from utils.tools import pretty_print_list_docs
+
 
 GRADING_PROMPT = """
 You are an expert in evaluating the relevance between a user's question and retrieved documents.
@@ -27,6 +29,7 @@ Focus on:
 4. The context alignment between question and document
 """
 
+
 def grade_retrieval(
     question: str,
     retrieved_docs: List[str],
@@ -35,33 +38,33 @@ def grade_retrieval(
 ) -> List[Dict[str, Any]]:
     """
     Grade the relevance of retrieved documents to a user question.
-    
+
     Args:
         question: User's question
         retrieved_docs: List of retrieved document texts
         model: Name of the Ollama model to use
         temperature: Temperature for model generation
-        
+
     Returns:
         list: List of dictionaries containing grading results for each document
-        
+
     Raises:
         ValueError: If question is empty or retrieved_docs is empty
     """
     if not question or not retrieved_docs:
         logger.error("Empty question or retrieved documents")
         raise ValueError("Question and retrieved documents cannot be empty")
-    
+
     logger.info(f"Grading relevance for question: {question}")
-    
+
     prompt = PromptTemplate(
         input_variables=["question", "document"],
         template=GRADING_PROMPT
     )
-    
+
     llm = ChatOllama(model=model, temperature=temperature, format="json")
     chain = prompt | llm
-    
+
     results = []
     for doc in retrieved_docs:
         try:
@@ -74,6 +77,7 @@ def grade_retrieval(
             )
             parsed_result = json.loads(result.content)
             results.append(parsed_result)
+
             # logger.info(f"Grading result: {parsed_result}")
         except json.JSONDecodeError:
             logger.warning("Could not parse LLM response as JSON")
@@ -91,8 +95,9 @@ def grade_retrieval(
                 "key_matches": [],
                 "missing_aspects": ["Error in evaluation"]
             })
-    
+
     return results
+
 
 # Test the grader
 if __name__ == "__main__":
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     logger.info("Starting Retrieval Grader")
     print("Welcome to the Retrieval Grader!")
     print("Type 'quit' to exit")
-    
+
     # Sample documents for testing
     test_docs = [
         """
@@ -114,27 +119,29 @@ if __name__ == "__main__":
         and personality. Early diagnosis is crucial for better management of the condition.
         """
     ]
-    
+
     while True:
         try:
             print("\nAvailable test documents:")
             for i, doc in enumerate(test_docs, 1):
                 print(f"\nDocument {i}:")
                 print(doc.strip())
-            
-            user_input = input("\nEnter your question (or 'quit' to exit): ").strip()
+
+            user_input = input(
+                "\nEnter your question (or 'quit' to exit): ").strip()
             if not user_input:
                 logger.debug("Empty input received")
                 print("Please enter a valid question")
                 continue
-                
+
             if user_input.lower() == 'quit':
                 logger.info("User requested to quit")
                 print("Goodbye!")
                 break
-            
+
             try:
-                results = grade_retrieval(user_input, test_docs, model="llama3.2", temperature=0)
+                results = grade_retrieval(
+                    user_input, test_docs, model="llama3.2", temperature=0)
                 print("\nGrading Results:")
                 for i, result in enumerate(results, 1):
                     print(f"\nDocument {i} Results:")
@@ -142,11 +149,11 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.error(f"Error during grading: {str(e)}")
                 print(f"Failed to grade documents: {str(e)}")
-                
+
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt received")
             print("\nGoodbye!")
             break
         except Exception as e:
             logger.exception(f"Unexpected error: {str(e)}")
-            print(f"An error occurred: {str(e)}") 
+            print(f"An error occurred: {str(e)}")
