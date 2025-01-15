@@ -18,7 +18,7 @@ Add project src folder to python path
 
 ## 📁 Project Structure
 
-```
+```text
 .
 ├── src/
 │   ├── embedding/
@@ -51,18 +51,21 @@ Add project src folder to python path
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone [repository-url]
 cd LangchainRag_Ollama
 ```
 
 2. Create and activate a virtual environment:
+
 ```bash
 python -m venv env
 source env/bin/activate  # On Windows: env\Scripts\activate
 ```
 
 3. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
