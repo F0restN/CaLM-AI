@@ -18,8 +18,7 @@ disable=C0111,  # missing-docstring
         R0903,  # too-few-public-methods
         R0913,  # too-many-arguments
         R0914,  # too-many-locals
-        R0915   # too-many-statements
-        MD029,  # line-length
+        R0915,  # too-many-statements
 
 [SIMILARITIES]
 min-similarity-lines=4

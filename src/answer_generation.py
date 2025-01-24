@@ -5,22 +5,7 @@ from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 
 from utils.logger import logger
-
-ANSWER_PROMPT = """
-Based on the provided context, answer the user's question. If the context doesn't contain enough information or your not sure, say so.
-
-Context:
-{context}
-
-Question: {question}
-
-Return a clear and concise answer. The output should be in the following format:
-
-Answer: <answer>
-Sources: <sources>
-
-If context isn't provided, use "Answer" should start with "Sorry, I don't have enough information to answer that question." and "Sources" should be empty.
-"""
+from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
 
 
 def generate_answer(
@@ -38,6 +23,14 @@ def generate_answer(
         model: Name of the Ollama model
         temperature: Model temperature
     """
+
+    MEW_PROMPT = """
+    Answers user's question: {question}
+    
+    Summary user's story and sharing to provide peer support (put result under section "### Peer support" ) according to:
+    {context}
+    """
+
     if not question:
         logger.error("Missing question or context")
         raise ValueError("Question and context required")
@@ -48,7 +41,7 @@ def generate_answer(
     try:
         prompt = PromptTemplate(
             input_variables=["context", "question"],
-            template=ANSWER_PROMPT
+            template=MEW_PROMPT
         )
 
         llm = ChatOllama(model=model, temperature=temperature)
@@ -56,7 +49,9 @@ def generate_answer(
 
         response = chain.invoke({
             "context": context,
-            "question": question
+            "question": question,
+            "memory": "NAN",
+            "user_profile": "NAN",
         })
 
         return response.content
@@ -80,7 +75,7 @@ if __name__ == "__main__":
     ]
 
     answer = generate_answer(
-        question="What is Alzheimer's disease and its main symptoms?",
+        question="My parent is suffering from Alzheimer's disease, what should I do?",
         context_chunks=test_chunks
     )
     print(f"\nGenerated Answer:\n{answer}")

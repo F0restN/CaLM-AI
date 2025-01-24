@@ -1,9 +1,10 @@
 import json
 from typing import List, Dict, Any
-from utils.logger import logger
-from langchain_core.prompts import PromptTemplate
+
 from langchain_ollama import ChatOllama
-from utils.tools import pretty_print_list_docs
+from langchain_core.prompts import PromptTemplate
+
+from utils.logger import logger
 
 
 GRADING_PROMPT = """

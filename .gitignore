@@ -29,6 +29,7 @@ var/
 *.swo
 .cursorrules
 .cursorignore
+243_22562_220-pycharm-support-libs/
 
 # 环境文件
 .env
@@ -36,6 +37,8 @@ var/
 venv/
 ENV/
 poetry.lock
+.*
+anaconda_*
 
 # 模型文件和数据
 *.pth
