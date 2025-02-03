@@ -52,5 +52,3 @@ logger.add(
     level="ERROR",
     encoding="utf-8"
 )
-
-logger.info("Logger initialized successfully")

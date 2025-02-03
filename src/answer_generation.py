@@ -24,35 +24,29 @@ def generate_answer(
         temperature: Model temperature
     """
 
-    MEW_PROMPT = """
-    Answers user's question: {question}
-    
-    Summary user's story and sharing to provide peer support (put result under section "### Peer support" ) according to:
-    {context}
-    """
-
     if not question:
-        logger.error("Missing question or context")
         raise ValueError("Question and context required")
 
-    context = "\n\n".join(doc.page_content for doc in context_chunks)
-    logger.info(f"Generating answer for: {question}")
-
+    context = "\n".join(doc.page_content for doc in context_chunks)
+    
     try:
+        llm = ChatOllama(model=model, temperature=temperature)
         prompt = PromptTemplate(
             input_variables=["context", "question"],
-            template=MEW_PROMPT
+            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT
         )
 
-        llm = ChatOllama(model=model, temperature=temperature)
         chain = prompt | llm
 
-        response = chain.invoke({
-            "context": context,
-            "question": question,
-            "memory": "NAN",
-            "user_profile": "NAN",
-        })
+        response = chain.invoke(
+            {
+                "context": context,
+                "question": question,
+                "memory": "NAN",
+                "user_profile": "NAN",
+            }, 
+            config={"response_format": "markdown"}
+        )
 
         return response.content
     except Exception as e:

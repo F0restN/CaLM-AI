@@ -10,99 +10,96 @@ from utils.logger import logger
 from utils.tools import pretty_print_list_docs
 
 
-class VectorStore:
-    def __init__(self):
-        pass
+def build_chroma_vectorstore(
+    docs: List[Document],
+    embedding_model,
+    # collection_name: str = "calm_kb",
+    vectorstore_path: str = None,
+    force_rebuild: bool = False
+) -> Chroma:
+    """
+    Build a Chroma vector store from a list of documents
 
-    def build_chroma_vectorstore(
-        self,
-        docs: List[Document],
-        embedding_model,
-        # collection_name: str = "calm_kb",
-        vectorstore_path: str = None,
-        force_rebuild: bool = False
-    ) -> Chroma:
-        """
-        Build a Chroma vector store from a list of documents
+    Args:
+        documents: List of documents to be vectorized
+        vectorstore_path: Path to the vector store directory
+        embedding_model: Embedding model to use
+        force_rebuild: Whether to rebuild the vector store if it already exists
 
-        Args:
-            documents: List of documents to be vectorized
-            vectorstore_path: Path to the vector store directory
-            embedding_model: Embedding model to use
-            force_rebuild: Whether to rebuild the vector store if it already exists
+    Returns:
+        Chroma: Built vector store
+    """
+    if os.path.isdir(vectorstore_path) and force_rebuild:
+        shutil.rmtree(vectorstore_path)
+        logger.info(
+            f"Vector store {vectorstore_path} already exists and force_rebuild is True. Rebuilding...")
 
-        Returns:
-            Chroma: Built vector store
-        """
-        if os.path.isdir(vectorstore_path) and force_rebuild:
-            shutil.rmtree(vectorstore_path)
-            logger.info(
-                f"Vector store {vectorstore_path} already exists and force_rebuild is True. Rebuilding...")
+    logger.info(f"Building vector store with {len(docs)} documents")
 
-        logger.info(f"Building vector store with {len(docs)} documents")
+    try:
+        vectorstore = Chroma.from_documents(
+            documents=docs,
+            embedding=embedding_model,
+            # collection_name=collection_name,
+            persist_directory=vectorstore_path,
+        )
+        logger.info(
+            f"Vector store built successfully at {vectorstore_path}")
+        return vectorstore
+    except Exception as e:
+        logger.error(f"Failed to build vector store: {str(e)}")
+        raise RuntimeError(
+            f"Failed to build vector store: {str(e)}") from e
 
-        try:
-            vectorstore = Chroma.from_documents(
-                documents=docs,
-                embedding=embedding_model,
-                # collection_name=collection_name,
-                persist_directory=vectorstore_path,
-            )
-            logger.info(
-                f"Vector store built successfully at {vectorstore_path}")
-            return vectorstore
-        except Exception as e:
-            logger.error(f"Failed to build vector store: {str(e)}")
-            raise RuntimeError(
-                f"Failed to build vector store: {str(e)}") from e
 
-    def get_chroma_vectorstore(self, vectorstore_path: str = None, embedding: HuggingFaceEmbeddings = None) -> Chroma:
-        """
-        Load ChromaDB vector store from persistent directory
+def get_chroma_vectorstore(vectorstore_path: str = None, embedding: HuggingFaceEmbeddings = None) -> Chroma:
+    """
+    Load ChromaDB vector store from persistent directory
 
-        Args:
-            vectorstore_path: Path to the vector store directory. If None, uses default path
-            embedding: Embedding function to use. If None, uses default BGE embedding
+    Args:
+        vectorstore_path: Path to the vector store directory. If None, uses default path
+        embedding: Embedding function to use. If None, uses default BGE embedding
 
-        Returns:
-            Chroma: Loaded vector store
+    Returns:
+        Chroma: Loaded vector store
 
-        Raises:
-            RuntimeError: If ChromaDB cannot be loaded
-        """
-        if vectorstore_path is None or vectorstore_path == "":
-            logger.error("Vector store path is required")
-            raise ValueError("Vector store path is required")
-        elif not os.path.isdir(vectorstore_path):
-            logger.error(
-                f"Existing chroma db does not exist on path: {vectorstore_path}")
-            raise ValueError(
-                f"Existing chroma db does not exist on path: {vectorstore_path}"
-            )
+    Raises:
+        RuntimeError: If ChromaDB cannot be loaded
+    """
+    if vectorstore_path is None or vectorstore_path == "":
+        logger.error("Vector store path is required")
+        raise ValueError("Vector store path is required")
+    elif not os.path.isdir(vectorstore_path):
+        logger.error(
+            f"Existing chroma db does not exist on path: {vectorstore_path}")
+        raise ValueError(
+            f"Existing chroma db does not exist on path: {vectorstore_path}"
+        )
 
-        if embedding is None:
-            logger.error("Embedding model is required")
-            raise ValueError("Embedding model is required")
+    if embedding is None:
+        logger.error("Embedding model is required")
+        raise ValueError("Embedding model is required")
 
-        try:
-            db = Chroma(embedding_function=embedding,
-                        persist_directory=vectorstore_path, )
-            return db
-        except Exception as e:
-            logger.error(f"ChromaDB load failed: {str(e)}")
-            raise RuntimeError(f"ChromaDB error: {str(e)}") from e
+    try:
+        db = Chroma(embedding_function=embedding,
+                    persist_directory=vectorstore_path, )
+        return db
+    except Exception as e:
+        logger.error(f"ChromaDB load failed: {str(e)}")
+        raise RuntimeError(f"ChromaDB error: {str(e)}") from e
 
-    def retrieve_docs(self, query: str, vectorstore: Chroma, k: int = 10) -> List[Document]:
-        """
-        Retrieve documents from vector store
-        """
-        try:
-            docs = vectorstore.similarity_search(query=query, k=k)
-            logger.warning(f"Retrieved {len(docs)} documents")
-            return docs
-        except Exception as e:
-            logger.error(f"Retrieval failed: {str(e)}")
-            raise
+
+def retrieve_docs(query: str, vectorstore: Chroma, k: int = 10) -> List[Document]:
+    """
+    Retrieve documents from vector store
+    """
+    try:
+        docs = vectorstore.similarity_search(query=query, k=k)
+        logger.warning(f"Retrieved {len(docs)} documents")
+        return docs
+    except Exception as e:
+        logger.error(f"Retrieval failed: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":
@@ -111,13 +108,12 @@ if __name__ == "__main__":
     vectorstore_path = "./data/vector_database/peer_kb"  # Fixed typo in variable name
     embedding_model = EmbeddingModels().get_bge_embedding('BAAI/bge-m3')
 
-    vector_store = VectorStore()
-    chroma_kb = vector_store.get_chroma_vectorstore(
+    chroma_kb = get_chroma_vectorstore(
         vectorstore_path=vectorstore_path,
         embedding=embedding_model
     )
 
     query = 'what is the specialty for Chinese language.'
-    docs = vector_store.retrieve_docs(query=query, vectorstore=chroma_kb)
+    docs = retrieve_docs(query=query, vectorstore=chroma_kb)
 
     pretty_print_list_docs(docs)
