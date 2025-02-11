@@ -3,16 +3,19 @@ from typing import Sequence, List, Dict, Any
 from typing_extensions import Annotated
 from dataclasses import dataclass, field
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, AnyMessage
-from src.utils.logger import logger
+from langchain_ollama import ChatOllama
 from fastapi import FastAPI
 
+from src.utils.logger import logger
 from answer_generation import generate_answer
-from src.classes.ChatSession import ChatSession
-from classes.ReasonedDocument import ReasonedDocument
+from classes.ChatSession import ChatSession
+from classes.DocumentAssessment import DocumentAssessment, AnnotatedDocumentEvl
 from checkpoints.routering import get_routing_decision
 from checkpoints.retrieval_grading import grade_retrieval
+from checkpoints.query_extander import query_extander
 from embedding.vector_store import get_chroma_vectorstore, retrieve_docs
 from embedding.embedding_models import get_bge_embedding
+
 
 app = FastAPI()
 
@@ -28,7 +31,7 @@ def main(
     user_query: str = "my mom confirmed early on-set alzheimer, what does that means? how should I take care of her ?", 
     doc_number: int = 5,
     threshold: float = 0.8,
-    chat_session: ChatSession = ""
+    # chat_session: ChatSession = ""
 ):
 
     latest_human_message = ""
@@ -45,6 +48,7 @@ def main(
         vectorstore_path = "./data/vector_database/peer_kb"
     else:
         vectorstore_path = "./data/vector_database/research_kb"
+        
     relevant_doc = retrieve_docs(
         latest_human_message,
         get_chroma_vectorstore(vectorstore_path, embedding_model),
@@ -54,11 +58,11 @@ def main(
     # Grade documents
     graded_doc = grade_retrieval(latest_human_message, relevant_doc, model="llama3.2", temperature=0)
 
-    # Filter out documents with relevance_score lower than 0.5
+    # First round of filtering
     filtered_docs = []
     for doc, grade in zip(relevant_doc, graded_doc):
         if grade["relevance_score"] >= threshold:
-            reasoned_doc = ReasonedDocument(
+            reasoned_doc = AnnotatedDocumentEvl(
                 document=doc,
                 relevance_score=grade["relevance_score"],
                 reasoning=grade["reasoning"],
@@ -66,7 +70,13 @@ def main(
             )
             filtered_docs.append(reasoned_doc)
 
-    # Re-rank the filtered documents based on relevance_score in descending order
+    # ============= If we have graded documents with missing topics, do another retrieval ============= 
+    
+    # retry_count = 0
+    # while retry_count <= max_retries:
+        
+    
+    # =============  Sort all documents by relevance score ============= 
     filtered_docs.sort(key=lambda x: x.relevance_score, reverse=True)
     
     res = generate_answer(latest_human_message, filtered_docs, model="llama3.2", temperature=0)
@@ -90,7 +100,7 @@ def main(
         class Config:
             json_schema_extra = {
                 "example": {
-                    "content": "### Answer\nSample response\n\n**Sources**\n- Doc1-url"
+                    "content": "### Answer Sample response **Sources** - Doc1-url"
                 }
             }
 
@@ -116,11 +126,6 @@ def main(
     # If all retries fail, return error with original response
     logger.error("Markdown validation failed after 3 attempts")
     return "Error: Could not format response properly. Please try again."
-    
-    
-    
-    
-    
     
 
 @app.get("/health")

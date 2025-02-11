@@ -103,10 +103,10 @@ def retrieve_docs(query: str, vectorstore: Chroma, k: int = 10) -> List[Document
 
 
 if __name__ == "__main__":
-    from embedding_models import EmbeddingModels  # Fixed relative import
+    from embedding.embedding_models import get_bge_embedding  # Fixed relative import
 
     vectorstore_path = "./data/vector_database/peer_kb"  # Fixed typo in variable name
-    embedding_model = EmbeddingModels().get_bge_embedding('BAAI/bge-m3')
+    embedding_model = get_bge_embedding('BAAI/bge-m3')
 
     chroma_kb = get_chroma_vectorstore(
         vectorstore_path=vectorstore_path,

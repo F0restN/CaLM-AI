@@ -28,6 +28,8 @@ def generate_answer(
         raise ValueError("Question and context required")
 
     context = "\n".join(doc.page_content for doc in context_chunks)
+
+
     
     try:
         llm = ChatOllama(model=model, temperature=temperature)
