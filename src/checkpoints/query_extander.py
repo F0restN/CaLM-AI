@@ -43,22 +43,27 @@ def query_extander(
 
     res = chain.invoke({"original_query":original_query, "missing_topics":missing_topics})
 
-    return res
+    return res.content, res 
 
 query_extander_tool = StructuredTool.from_function(
     func = query_extander,
     handle_tool_error=True,
+    response_format="content_and_artifact"    
 )
 
 if __name__ == "__main__":
     original_query = "What is the capital of France?"
     missing_topics = ["History of France", "Population of France"]
 
-    res = query_extander_tool.invoke({
-        "original_query": original_query,
-        "missing_topics": missing_topics
-    })
+    # res = query_extander_tool.invoke({
+    #     "original_query": original_query,
+    #     "missing_topics": missing_topics
+    # })
+    
+    res = query_extander(
+        original_query, missing_topics, model="deepseek-r1:14b"
+    )
 
-    print(res.content)
+    print(res)
 
 
