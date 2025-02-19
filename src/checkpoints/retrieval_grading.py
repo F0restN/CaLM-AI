@@ -145,6 +145,7 @@ if __name__ == "__main__":
         results = grading_document.invoke({
             "question":user_input, 
             "retrieved_docs": test_docs, 
+            "model": "phi4:latest"
         })
         
         

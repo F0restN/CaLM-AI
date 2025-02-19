@@ -1,119 +1,30 @@
-import os
-import shutil
-from typing import List
-
-from langchain_chroma import Chroma
-from langchain_core.documents import Document
-from langchain_community.embeddings import HuggingFaceEmbeddings
-
-from utils.logger import logger
-from utils.tools import pretty_print_list_docs
+from langchain_postgres import PGVector
+from langchain_postgres.vectorstores import PGVector
 
 
-def build_chroma_vectorstore(
-    docs: List[Document],
-    embedding_model,
-    # collection_name: str = "calm_kb",
-    vectorstore_path: str = None,
-    force_rebuild: bool = False
-) -> Chroma:
-    """
-    Build a Chroma vector store from a list of documents
-
-    Args:
-        documents: List of documents to be vectorized
-        vectorstore_path: Path to the vector store directory
-        embedding_model: Embedding model to use
-        force_rebuild: Whether to rebuild the vector store if it already exists
-
-    Returns:
-        Chroma: Built vector store
-    """
-    if os.path.isdir(vectorstore_path) and force_rebuild:
-        shutil.rmtree(vectorstore_path)
-        logger.info(
-            f"Vector store {vectorstore_path} already exists and force_rebuild is True. Rebuilding...")
-
-    logger.info(f"Building vector store with {len(docs)} documents")
-
-    try:
-        vectorstore = Chroma.from_documents(
-            documents=docs,
-            embedding=embedding_model,
-            # collection_name=collection_name,
-            persist_directory=vectorstore_path,
-        )
-        logger.info(
-            f"Vector store built successfully at {vectorstore_path}")
-        return vectorstore
-    except Exception as e:
-        logger.error(f"Failed to build vector store: {str(e)}")
-        raise RuntimeError(
-            f"Failed to build vector store: {str(e)}") from e
-
-
-def get_chroma_vectorstore(vectorstore_path: str = None, embedding: HuggingFaceEmbeddings = None) -> Chroma:
-    """
-    Load ChromaDB vector store from persistent directory
-
-    Args:
-        vectorstore_path: Path to the vector store directory. If None, uses default path
-        embedding: Embedding function to use. If None, uses default BGE embedding
-
-    Returns:
-        Chroma: Loaded vector store
-
-    Raises:
-        RuntimeError: If ChromaDB cannot be loaded
-    """
-    if vectorstore_path is None or vectorstore_path == "":
-        logger.error("Vector store path is required")
-        raise ValueError("Vector store path is required")
-    elif not os.path.isdir(vectorstore_path):
-        logger.error(
-            f"Existing chroma db does not exist on path: {vectorstore_path}")
-        raise ValueError(
-            f"Existing chroma db does not exist on path: {vectorstore_path}"
-        )
-
-    if embedding is None:
-        logger.error("Embedding model is required")
-        raise ValueError("Embedding model is required")
-
-    try:
-        db = Chroma(embedding_function=embedding,
-                    persist_directory=vectorstore_path, )
-        return db
-    except Exception as e:
-        logger.error(f"ChromaDB load failed: {str(e)}")
-        raise RuntimeError(f"ChromaDB error: {str(e)}") from e
-
-
-def retrieve_docs(query: str, vectorstore: Chroma, k: int = 10) -> List[Document]:
-    """
-    Retrieve documents from vector store
-    """
-    try:
-        docs = vectorstore.similarity_search(query=query, k=k)
-        logger.warning(f"Retrieved {len(docs)} documents")
-        return docs
-    except Exception as e:
-        logger.error(f"Retrieval failed: {str(e)}")
-        raise
-
-
-if __name__ == "__main__":
-    from embedding.embedding_models import get_bge_embedding  # Fixed relative import
-
-    vectorstore_path = "./data/vector_database/peer_kb"  # Fixed typo in variable name
-    embedding_model = get_bge_embedding('BAAI/bge-m3')
-
-    chroma_kb = get_chroma_vectorstore(
-        vectorstore_path=vectorstore_path,
-        embedding=embedding_model
+def get_connection(connection: str, embedding_model, collection_name: str):
+    if not collection_name:
+        raise ("Collection Name can not be empty")
+    
+    return PGVector(
+        embeddings=embedding_model,
+        collection_name=collection_name,
+        connection=connection,
+        use_jsonb=True,
     )
 
-    query = 'what is the specialty for Chinese language.'
-    docs = retrieve_docs(query=query, vectorstore=chroma_kb)
+if __name__ == "__main__":
+    import os
+    from embedding_models import get_nomic_embedding
 
-    pretty_print_list_docs(docs)
+    PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
+    
+    r_k = get_connection(
+        connection=PGVECTOR_CONN,
+        embedding_model=get_nomic_embedding(),
+        collection_name="peer_support_kb"
+    )
+    
+    res = r_k.similarity_search("my mom is forgetting things, what should I do ? Is she dimentia ?")
+    
+    [print(f"{doc}\n") for doc in res]

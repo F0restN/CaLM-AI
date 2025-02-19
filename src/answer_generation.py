@@ -10,7 +10,7 @@ from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
 
 def generate_answer(
     question: str,
-    context_chunks: List[Document],
+    context_chunks: List[Document] = [],
     model: str = "llama3.2",
     temperature: float = 0
 ) -> str:
@@ -72,6 +72,7 @@ if __name__ == "__main__":
 
     answer = generate_answer(
         question="My parent is suffering from Alzheimer's disease, what should I do?",
-        context_chunks=test_chunks
+        context_chunks=test_chunks,
+        model="phi4:latest"
     )
     print(f"\nGenerated Answer:\n{answer}")
