@@ -53,8 +53,9 @@ def main(requestBody: RequestBody):
     # Routing, answer directly if retrieval is not necessary
     adaptive_decision: AdaptiveDecision = adaptive_rag_decision(latest_human_message, model=intermida_model)
     
-    if adaptive_decision.require_extra_re is False:
-        return generate_answer(latest_human_message, model=model, temperature=0.6)
+    # if adaptive_decision.require_extra_re is False:
+    #     print("No need to retrieve from KB")
+    #     return generate_answer(latest_human_message, model=model, temperature=0.6)
     
 
     # Get relevant document, search professional kb either way 
