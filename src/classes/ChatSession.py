@@ -4,10 +4,10 @@ from typing import List, Literal
 # id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 class ChatMessage(BaseModel):
-    id: str
-    role: Literal["user", "assistant"]
-    content: str
-    timestamp: int
+    id: str = None
+    role: Literal["user", "assistant", "system"] = None
+    content: str = None
+    timestamp: int = None
 
 class ChatSession(BaseModel):
     model: str

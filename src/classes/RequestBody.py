@@ -1,5 +1,6 @@
+from typing import List
 from pydantic import BaseModel, Field
-from classes.ChatSession import ChatSession
+from classes.ChatSession import ChatMessage
 
 class RequestBody(BaseModel):
     user_query: str = Field(
@@ -32,7 +33,7 @@ class RequestBody(BaseModel):
         default="qwen2.5:latest",
         description="Intermediate decision model selection"
     )
-    chat_session: ChatSession = Field(
+    chat_session: List[ChatMessage] = Field(
         default=[],
         description="Communication history"
     )

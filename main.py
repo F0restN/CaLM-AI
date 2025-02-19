@@ -1,17 +1,11 @@
 import os
-import json
 
 from dotenv import load_dotenv
-from typing import Sequence, List, Dict, Any
-from typing_extensions import Annotated
-from dataclasses import dataclass, field
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, AnyMessage
 from fastapi import FastAPI
 
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
 from answer_generation import generate_answer
-from checkpoints.routering import get_routing_decision
 from checkpoints.retrieval_grading import grade_retrieval
 from checkpoints.query_extander import query_extander
 from checkpoints.adaptive_decision import adaptive_rag_decision
@@ -48,8 +42,11 @@ def main(requestBody: RequestBody):
     if not user_query:
         return "Please type in your question"
     
+    # latest_human_message = next(
+    #     (msg.content for msg in reversed(chat_session) if msg.role == "user"),
+    #     user_query
+    # )
     latest_human_message = user_query
-    
     
     # ============= User Intention Detection and Routing to correspondent KB ============= 
     
@@ -101,28 +98,29 @@ def main(requestBody: RequestBody):
     
     # ============= Generate =============     
     
-    return generate_answer(latest_human_message, filtered_docs, model=model, temperature=0)
+    # Get last 3 messages from chat history, or all if less than 3
+    chat_context = chat_session[-4:-1] if len(chat_session) >= 4 else chat_session[:]
     
-    # from pydantic import BaseModel, ValidationError
-    # import re
+    ans = generate_answer(latest_human_message, filtered_docs, chat_context, model=model, temperature=0)
+    
+    return ans
+    
+    # # 新增格式化返回逻辑
+    # formatted_response = f"\n{ans.answer}\n\n"
+    
+    # if ans.sources:
+    #     formatted_response += "##### References\n"
+    #     for source in ans.sources:
+    #         title = source.get('title', 'Untitled Document')
+    #         url = source.get('url', '#')
+    #         formatted_response += f"- [{title}]({url})\n"
+    
+    # if ans.follow_up_questions:
+    #     formatted_response += "\n##### Questions you might ask\n"
+    #     for i, question in enumerate(ans.follow_up_questions, 1):
+    #         formatted_response += f"{i}. {question}\n"
 
-    # class MarkdownResponse(BaseModel):
-    #     content: str
-        
-    #     @classmethod
-    #     def validate_markdown(cls, v):
-    #         # Basic markdown pattern check for headings, lists, or emphasis
-    #         markdown_pattern = r"(^#+\s|^- |\*\*.*\*\*|__.*__|\*.*\*|_.*_|!\[.*\]\(.*\)|\[.*\]\(.*\))"
-    #         if not re.search(markdown_pattern, v, re.MULTILINE):
-    #             raise ValueError("Response is not in valid markdown format")
-    #         return v
-
-    #     class Config:
-    #         json_schema_extra = {
-    #             "example": {
-    #                 "content": "### Answer Sample response **Sources** - Doc1-url"
-    #             }
-    #         }
+    # return formatted_response
 
 
 @app.get("/health")
@@ -130,8 +128,30 @@ def health_check():
     return {"status": "healthy"}    
 
 if __name__ == "__main__":
-    user_query = input("Enter your question \n")
+    payload = RequestBody(
+        user_query="my mom confirmed early on-set alzheimer, what does that means? how should I take care of her ?",
+        threshold=0.85,
+        doc_number=4,
+        max_retries=1,
+        model="phi4:latest",
+        intermida_model="qwen2.5:latest",
+        chat_session=[
+            {
+                "id": "c3db2446-651b-4603-b2a8-2ba558c97ff4",
+                "role": "user",
+                "content": "What are 5 creative things I could do with my kids' art? I don't want to throw them away",
+                "timestamp": 1738345174
+            },
+            {
+                "id": "dcc67334-532e-49c7-9876-996de89ed416",
+                "role": "assistant",
+                "content": "you are a very helpful ai assistant",
+                "timestamp": 1738345287
+            }
+        ],
+    )
     
-    res = main(user_query if user_query else "my mom confirmed early on-set alzheimer, what does that means? how should I take care of her ?")
+    res = main(payload)
     
     print(res)
+

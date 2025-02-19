@@ -43,4 +43,12 @@ Below is some useful information:
 <context>
 {context}
 </context>
+
+Chat history:
+<Chat History>
+{chat_session}
+</Chat History>
+
+Output Format:
+{format_instructions}
 """
