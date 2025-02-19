@@ -22,8 +22,8 @@ EXPOSE 8000
 # Run site-package-check.py to setup environment
 RUN python site-package-check.py
 
-ENV PGVECTOR_CONN="postgresql+psycopg://calmadrduser:HelloWeMeetAgain#1020@host.docker.internal:5432/calmadrddb"
-ENV OLLAMA_HOST="host.docker.internal"
+ENV PGVECTOR_CONN="postgresql+psycopg://calmadrduser:HelloWeMeetAgain#1020@172.17.0.1:5432/calmadrddb"
+ENV OLLAMA_HOST="172.17.0.1"
 
 # Start command
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
