@@ -36,6 +36,7 @@ def main(requestBody: RequestBody):
     max_retries = requestBody.max_retries
     doc_number = requestBody.doc_number
     model = requestBody.model
+    temperature = requestBody.temperature
     intermida_model = requestBody.intermida_model
     chat_session = requestBody.chat_session
     
@@ -51,11 +52,13 @@ def main(requestBody: RequestBody):
     # ============= User Intention Detection and Routing to correspondent KB ============= 
     
     # Routing, answer directly if retrieval is not necessary
-    adaptive_decision: AdaptiveDecision = adaptive_rag_decision(latest_human_message, model=intermida_model)
+    adaptive_decision: AdaptiveDecision = adaptive_rag_decision(latest_human_message, model=intermida_model, temperature=temperature)
     
-    # if adaptive_decision.require_extra_re is False:
-    #     print("No need to retrieve from KB")
-    #     return generate_answer(latest_human_message, model=model, temperature=0.6)
+    print(adaptive_decision)
+    
+    if adaptive_decision.require_extra_re is False:
+        print("No need to retrieve from KB")
+        return generate_answer(latest_human_message, model=model, temperature=0.6)
     
 
     # Get relevant document, search professional kb either way 
@@ -79,7 +82,7 @@ def main(requestBody: RequestBody):
     
     while True:
         retrieved_docs = crs_kb.similarity_search(query_messgae, k=doc_number)
-        graded_doc = grade_retrieval(latest_human_message, retrieved_docs, model=intermida_model, temperature=0)   
+        graded_doc = grade_retrieval(latest_human_message, retrieved_docs, model=intermida_model, temperature=temperature)   
 
         missing_topics = []
         for doc in graded_doc:
@@ -88,7 +91,7 @@ def main(requestBody: RequestBody):
             else:
                 missing_topics.append([ mt for mt in doc.missing_topics])
         
-        query_messgae = query_extander(latest_human_message, missing_topics, model=intermida_model)[0]
+        query_messgae = query_extander(latest_human_message, missing_topics, model=intermida_model, temperature=temperature)[0]
         retry_count = retry_count + 1
         
         if retry_count >= max_retries or len(filtered_docs) >= doc_number:
@@ -102,26 +105,7 @@ def main(requestBody: RequestBody):
     # Get last 3 messages from chat history, or all if less than 3
     chat_context = chat_session[-4:-1] if len(chat_session) >= 4 else chat_session[:]
     
-    ans = generate_answer(latest_human_message, filtered_docs, chat_context, model=model, temperature=0)
-    
-    return ans
-    
-    # # 新增格式化返回逻辑
-    # formatted_response = f"\n{ans.answer}\n\n"
-    
-    # if ans.sources:
-    #     formatted_response += "##### References\n"
-    #     for source in ans.sources:
-    #         title = source.get('title', 'Untitled Document')
-    #         url = source.get('url', '#')
-    #         formatted_response += f"- [{title}]({url})\n"
-    
-    # if ans.follow_up_questions:
-    #     formatted_response += "\n##### Questions you might ask\n"
-    #     for i, question in enumerate(ans.follow_up_questions, 1):
-    #         formatted_response += f"{i}. {question}\n"
-
-    # return formatted_response
+    return generate_answer(latest_human_message, filtered_docs, chat_context, model=model, temperature=temperature)
 
 
 @app.get("/health")
@@ -130,8 +114,8 @@ def health_check():
 
 if __name__ == "__main__":
     payload = RequestBody(
-        user_query="my mom confirmed early on-set alzheimer, what does that means? how should I take care of her ?",
-        threshold=0.85,
+        user_query="my mom seems forgetting thinks, what should I do ?",
+        threshold=0.65,
         doc_number=4,
         max_retries=1,
         model="phi4:latest",

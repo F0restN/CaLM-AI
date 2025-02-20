@@ -26,4 +26,4 @@ ENV PGVECTOR_CONN="postgresql+psycopg://calmadrduser:HelloWeMeetAgain#1020@172.1
 ENV OLLAMA_HOST="172.17.0.1"
 
 # Start command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main_graph:fastapi_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
