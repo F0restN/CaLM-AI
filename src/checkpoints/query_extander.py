@@ -3,6 +3,7 @@ from typing import List
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool
 from langchain_ollama import ChatOllama
+from langsmith import traceable
 
 QUERY_EXTAND_PROMPT = """
 Exatnd the query below to get more information about the topic:
@@ -15,7 +16,7 @@ return a string of the extended query only, do not include other supproting info
 """
 
 
-
+@traceable
 def query_extander(
     original_query: str,
     missing_topics: List[str],

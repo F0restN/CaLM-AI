@@ -4,6 +4,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import JsonOutputParser
+from langsmith import traceable
 
 from classes.Generation import AIGeneration, Generation
 from classes.ChatSession import ChatMessage
@@ -11,6 +12,7 @@ from utils.logger import logger
 from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
 
 
+@traceable
 def generate_answer(
     question: str,
     context_chunks: List[Document] = [],

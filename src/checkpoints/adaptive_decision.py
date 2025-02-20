@@ -1,7 +1,8 @@
-
+from loguru import logger
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from langsmith import traceable
 from classes.AdaptiveDecision import AdaptiveDecision
 
 ADAPTIVE_RAG_DECISION_PROMPT = """
@@ -14,14 +15,19 @@ You are expert in routing questions to the right knowledge base.
 Given those information above, you will determine whether extra information from those two knowledge base will help model 
 answer question {question}
 
-If extra information is not needed or not very helpful response 'False' for 'require_extra_re', otherwise 'True' and also determine which knowledge base is most relevant to user question: {question}, either 'research' or 'peer_support'
+If user's question: {question} is not related to research or peer_support, response 'False' for 'require_extra_re', otherwise 'True' and also determine which knowledge base is most relevant to user question: {question}, either 'research' or 'peer_support'
 
 Response format instruction:
 {format_instructions}
  
 """
 
-def adaptive_rag_decision(query: str, model: str = "phi4:latest", temperature: float = 0.1):
+@traceable
+def adaptive_rag_decision(
+    query: str, 
+    model: str = "phi4:latest", 
+    temperature: float = 0.1
+) -> AdaptiveDecision:
     """
     Decide whether extra retrieval step is necessary
     """
@@ -39,7 +45,10 @@ def adaptive_rag_decision(query: str, model: str = "phi4:latest", temperature: f
     chain = prompt | llm | json_parser
     
     try:
-        resp = chain.invoke({"question": query})    
+        resp = chain.invoke({"question": query})
+        
+        logger.info(f"Adaptive decision: {resp}")
+            
         return AdaptiveDecision(**resp)
     except Exception as e:
         raise e

@@ -6,6 +6,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool, ToolException
 from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser
+from langsmith import traceable
 
 from utils.logger import logger
 from classes.DocumentAssessment import DocumentAssessment, AnnotatedDocumentEvl
@@ -36,6 +37,7 @@ Focus on:
 - 0.900-1.000: Perfect or near-perfect match
 """
 
+@traceable
 def grade_retrieval(
     question: str,
     retrieved_docs: List[Document],
