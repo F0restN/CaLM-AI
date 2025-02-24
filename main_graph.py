@@ -20,6 +20,8 @@ fastapi_app = FastAPI()
 
 logger = logging.getLogger("uvicorn.access")
 
+
+
 # Define state machine state structure
 class GraphState(TypedDict):
     # Static states
@@ -62,6 +64,8 @@ def detect_intention(state: GraphState):
     )
         
     return {"adaptive_decision": decision}
+
+
 
 def retrieve_documents(state: GraphState):
     """Document retrieval node"""
@@ -190,6 +194,9 @@ calm_agent = setup_workflow()
 
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody):
+    
+    print(f"==== Initial Request from Openweb-UI portal: {request}")
+    
     initial_state = {
         **request.model_dump(),
         "adaptive_decision": None,

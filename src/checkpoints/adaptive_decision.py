@@ -22,7 +22,7 @@ Response format instruction:
  
 """
 
-@traceable
+
 def adaptive_rag_decision(
     query: str, 
     model: str = "phi4:latest", 

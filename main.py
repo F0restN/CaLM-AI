@@ -26,9 +26,9 @@ p_kb = get_connection(connection=PGVECTOR_CONN,embedding_model=get_nomic_embeddi
 
 
 @app.post("/")
-def main(requestBody: RequestBody):
+def main(requestBody: RequestBody, **kwargs):
     
-    print(requestBody)
+    print(requestBody, kwargs)
     print("\n")
     
     user_query = requestBody.user_query

@@ -12,7 +12,7 @@ from utils.logger import logger
 from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
 
 
-@traceable
+
 def generate_answer(
     question: str,
     context_chunks: List[Document] = [],

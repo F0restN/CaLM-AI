@@ -37,7 +37,7 @@ Focus on:
 - 0.900-1.000: Perfect or near-perfect match
 """
 
-@traceable
+
 def grade_retrieval(
     question: str,
     retrieved_docs: List[Document],

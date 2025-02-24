@@ -16,7 +16,7 @@ return a string of the extended query only, do not include other supproting info
 """
 
 
-@traceable
+
 def query_extander(
     original_query: str,
     missing_topics: List[str],

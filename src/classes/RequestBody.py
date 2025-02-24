@@ -1,6 +1,35 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from classes.ChatSession import ChatMessage
+
+
+class CurrentSession(BaseModel):
+    user_id: Optional[str] = None
+    chat_id: Optional[str] = None
+    message_id: Optional[str] = None
+    session_id: Optional[str] = None
+    tool_ids: Optional[str] = None
+    files: Optional[str] = None
+    features: Dict[str, bool] = Field(default_factory=lambda: {
+        "image_generation": False,
+        "web_search": False
+    })
+
+
+class User(BaseModel):
+    name: str
+    id: str 
+    email: str
+    role: str
+
+
+class BodyConfig(BaseModel):
+    stream: bool = True
+    model: str = "calm_adrd_pipeline"
+    messages: List[Dict[str, Any]] = []
+    current_session: CurrentSession = Field(default_factory=CurrentSession)
+    user: Optional[User] = None
+
 
 class RequestBody(BaseModel):
     user_query: str = Field(
@@ -35,11 +64,15 @@ class RequestBody(BaseModel):
         default="phi4:latest",
         description="Main generation model selection"
     )
-    intermida_model: str = Field(
+    intermediate_model: str = Field(
         default="qwen2.5:latest",
         description="Intermediate decision model selection"
     )
     chat_session: List[ChatMessage] = Field(
         default=[],
         description="Communication history"
+    )
+    body_config: BodyConfig = Field(
+        default_factory=BodyConfig,
+        description="Other configuration"
     )
