@@ -1,4 +1,3 @@
-import json
 from typing import List, Dict, Any
 
 from langchain_ollama import ChatOllama
@@ -6,23 +5,18 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool, ToolException
 from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser
-from langsmith import traceable
-import langsmith as ls
 
 from utils.logger import logger
 from classes.DocumentAssessment import DocumentAssessment, AnnotatedDocumentEvl
 
 
 GRADING_PROMPT = """
-You are a search relevance expert. Analyze how relevant the given document is to the user's query and provide a single numeric score between 0.000 and 1.000. Follow these scoring guidelines:
+You are a search relevance expert. Analyze how relevant the given document is to a given query: ({question}) and provide a single numeric score between 0.000 and 1.000. Follow these scoring guidelines:
 
-User Question: {question}
-
-Retrieved Document: {document}
-
-Return a JSON with the following structure:
-{format_instructions}
-
+This is the document you will be grading:
+<start_of_document>
+{document}
+<end_of_document>
 
 Focus on:
 1. Semantic relevance, not just keyword matching
@@ -36,6 +30,9 @@ Focus on:
 - 0.300-0.599: Moderately relevant
 - 0.600-0.899: Highly relevant 
 - 0.900-1.000: Perfect or near-perfect match
+
+Return a JSON with the following structure:
+{format_instructions}
 """
 
 
@@ -89,13 +86,21 @@ def grade_retrieval(
                     "question": question,
                     "document": doc.page_content
                 },
-                config={"response_format": "json", "configurable": {"thread_id": "127489423hj1h"}},
+                config={"response_format": "json"},
                 langsmith_extra=langsmith_extra
             )
+            
+            # For Langsmith tracing render purpose
+            doc.metadata["relevance_score"] = result['relevance_score']
+            doc.metadata["reasoning"] = result['reasoning']
+            doc.metadata["missing_topics"] = result['missing_topics']
+            
             results.append(AnnotatedDocumentEvl(
                 document=doc,
                 **result
             ))
+            
+            logger.info(f"Document {doc.page_content} is {result}")
         except Exception as e:
             logger.error(f"Error during grading: {str(e)}")
             results.append({

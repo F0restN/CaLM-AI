@@ -41,9 +41,6 @@ def adaptive_rag_decision(
         partial_variables={"format_instructions": json_parser.get_format_instructions}        
     )    
     
-    print("====== langsmith log")
-    print(langsmith_extra)
-    
     llm = ChatOllama(model=model, temperature=temperature, format="json")
     
     chain = prompt | llm | json_parser
@@ -51,7 +48,8 @@ def adaptive_rag_decision(
     try:
         resp = chain.invoke({"question": query})
         
-        logger.info(f"Adaptive decision: {resp}")
+        logger.info("======================================================================")
+        logger.info(f"Adaptive decision for query {query} is {resp}")
             
         return AdaptiveDecision(**resp)
     except Exception as e:

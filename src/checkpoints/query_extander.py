@@ -1,9 +1,9 @@
 from typing import List
 
+from loguru import logger
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool
 from langchain_ollama import ChatOllama
-from langsmith import traceable
 
 QUERY_EXTAND_PROMPT = """
 Exatnd the query below to get more information about the topic:
@@ -58,6 +58,8 @@ def query_extander(
     chain = prompt | llm 
 
     res = chain.invoke({"original_query":original_query, "missing_topics":missing_topics})
+    
+    logger.info(f"Query extander running using topics: {missing_topics}")
     
     return res.content, res
 

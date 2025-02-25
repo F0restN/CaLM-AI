@@ -59,10 +59,15 @@ def generate_answer(
             {
                 "context": context_chunks,
                 "question": question,
-                "chat_session": chat_session
+                "chat_session": []
             }, 
             config={"response_format": "markdown"},
         )
+        
+        
+        logger.info(f"Answer generation completed for question: {question}, using model: {model}, temperature: {temperature}")
+        logger.info(f"Appendix documents: {context_chunks}")
+        logger.info(f"Answer: {response['answer']}")
 
         return Generation(
             **response,

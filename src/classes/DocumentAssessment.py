@@ -25,9 +25,8 @@ class DocumentAssessment(BaseModel):
         return self
 
 
-class AnnotatedDocumentEvl(DocumentAssessment):
+class AnnotatedDocumentEvl(DocumentAssessment):    
     document: Document = Field(description="Evaluated document itself")
 
     class Config:
         arbitrary_types_allowed = True
-
