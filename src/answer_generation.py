@@ -18,7 +18,8 @@ def generate_answer(
     context_chunks: List[Document] = [],
     chat_session: List[ChatMessage] = [],
     model: str = "llama3.2",
-    temperature: float = 0
+    temperature: float = 0,
+    langsmith_extra: dict = {}
 ) -> Generation:
     """
     Generate answer from context documents using LLM.
@@ -60,7 +61,7 @@ def generate_answer(
                 "question": question,
                 "chat_session": chat_session
             }, 
-            config={"response_format": "markdown"}
+            config={"response_format": "markdown"},
         )
 
         return Generation(

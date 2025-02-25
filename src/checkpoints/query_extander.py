@@ -22,15 +22,30 @@ def query_extander(
     missing_topics: List[str],
     model: str = "llama3.2",
     temperature: float = 0,
+    langsmith_extra: dict = {}
 ) -> str:
     """
-    Extand the query to include missing topics.
-
+    Extends the original query by incorporating missing topics to create a more comprehensive search query.
+    
     Args:
-        - original_query: The original query that needs to be extanded.
-        - missing_topics: A list of topics that the query should cover.
-        - model: The model to use for the generation.
-        - temperature: The temperature to use for the generation.
+        original_query (str): The initial user query
+        missing_topics (List[str]): List of topics that should be covered but are missing from retrieved documents
+        model (str, optional): Name of the Ollama model to use. Defaults to "llama3.2"
+        temperature (float, optional): Temperature for model generation. Defaults to 0
+        langsmith_extra (dict, optional): Extra parameters for langsmith tracing. Defaults to {}
+        
+    Returns:
+        tuple: A tuple containing:
+            - str: The extended query string
+            - Response: The raw response object from the LLM
+            
+    Example:
+        >>> query_extander(
+        ...     "What is Alzheimer's?",
+        ...     ["early symptoms", "treatment options"],
+        ...     model="deepseek-r1:14b"
+        ... )
+        ("What is Alzheimer's disease, its early symptoms and available treatment options?", <Response>)
     """
     
     prompt = PromptTemplate(
@@ -38,18 +53,18 @@ def query_extander(
         input_variables=["original_query", "missing_topics"]
     )
 
-    llm = ChatOllama(model=model, temperature=temperature, max_tokens=100)
+    llm = ChatOllama(model=model, temperature=temperature, max_tokens=200)
 
     chain = prompt | llm 
 
     res = chain.invoke({"original_query":original_query, "missing_topics":missing_topics})
-
-    return res.content, res 
+    
+    return res.content, res
 
 query_extander_tool = StructuredTool.from_function(
     func = query_extander,
     handle_tool_error=True,
-    response_format="content_and_artifact"    
+    response_format="content_and_artifact" 
 )
 
 if __name__ == "__main__":
@@ -62,7 +77,7 @@ if __name__ == "__main__":
     # })
     
     res = query_extander(
-        original_query, missing_topics, model="deepseek-r1:14b"
+        original_query, missing_topics, model="qwen2.5"
     )
 
     print(res)

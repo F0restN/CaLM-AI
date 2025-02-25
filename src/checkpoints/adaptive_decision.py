@@ -26,7 +26,8 @@ Response format instruction:
 def adaptive_rag_decision(
     query: str, 
     model: str = "phi4:latest", 
-    temperature: float = 0.1
+    temperature: float = 0.1,
+    langsmith_extra: dict = {}
 ) -> AdaptiveDecision:
     """
     Decide whether extra retrieval step is necessary
@@ -40,6 +41,9 @@ def adaptive_rag_decision(
         partial_variables={"format_instructions": json_parser.get_format_instructions}        
     )    
     
+    print("====== langsmith log")
+    print(langsmith_extra)
+    
     llm = ChatOllama(model=model, temperature=temperature, format="json")
     
     chain = prompt | llm | json_parser
@@ -51,7 +55,7 @@ def adaptive_rag_decision(
             
         return AdaptiveDecision(**resp)
     except Exception as e:
-        raise e
+        raise e 
     
     
 if __name__ == "__main__":

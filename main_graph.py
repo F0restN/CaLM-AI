@@ -16,11 +16,12 @@ from embedding.embedding_models import get_nomic_embedding
 from dotenv import load_dotenv
 
 load_dotenv()
+
 fastapi_app = FastAPI()
 
 logger = logging.getLogger("uvicorn.access")
 
-
+ls_tracing = {"project_name": os.getenv("LANGSMITH_PROJECT"), "metadata": {"session_id": None}}
 
 # Define state machine state structure
 class GraphState(TypedDict):
@@ -28,13 +29,14 @@ class GraphState(TypedDict):
     user_query: str
     chat_session: list
     model: str
-    intermida_model: str
+    intermediate_model: str
     threshold: float
     max_retries: int
     doc_number: int
     temperature: float
     
     # Running states
+    query_message: str | None = None
     
     # Routing function
     adaptive_decision: AdaptiveDecision | None
@@ -54,17 +56,17 @@ p_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedd
 r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(), collection_name='research_kb')
 
 # Define node functions
-def detect_intention(state: GraphState):
+def detect_intention(state):
     """User intention detection node"""
     
     decision = adaptive_rag_decision(
         state["user_query"],
-        model=state["intermida_model"],
-        temperature=state["temperature"]
+        model=state["intermediate_model"],
+        temperature=state["temperature"],
+        langsmith_extra=ls_tracing
     )
         
     return {"adaptive_decision": decision}
-
 
 
 def retrieve_documents(state: GraphState):
@@ -75,19 +77,21 @@ def retrieve_documents(state: GraphState):
     else:
         cls_kb = r_kb
     
-    docs = cls_kb.similarity_search(state["user_query"], k=state["doc_number"])
+    docs = cls_kb.similarity_search(state["query_message"], k=state["doc_number"])
     return {
         "retrieved_docs": docs, 
         "retry_count": state["retry_count"] + 1
     }
 
+
 def grade_documents(state: GraphState):
     """Document grading node"""
     graded = grade_retrieval(
-        state["user_query"],
+        state["query_message"],
         state["retrieved_docs"],
-        model=state["intermida_model"],
-        temperature=state["temperature"]
+        model=state["intermediate_model"],
+        temperature=state["temperature"],
+        langsmith_extra=ls_tracing
     )
     
     filtered = []
@@ -103,18 +107,20 @@ def grade_documents(state: GraphState):
         "missing_topics": missing
     }
 
+
 def expand_query(state: GraphState):
     """Query expansion node"""
     new_query = query_extander(
-        state["user_query"],
+        state["query_message"],
         state["missing_topics"],
-        model=state["intermida_model"],
-        temperature=state["temperature"]
+        model=state["intermediate_model"],
+        temperature=state["temperature"],
+        langsmith_extra=ls_tracing
     )[0]
     return {
         "query_message": new_query,
-        "retry_count": state["retry_count"] + 1
     }
+
 
 def generate_final_answer(state: GraphState):
     """Final answer generation node"""
@@ -125,18 +131,22 @@ def generate_final_answer(state: GraphState):
         context_chunks = state["filtered_docs"] if state["filtered_docs"] else [],
         chat_session = chat_session,
         model = state["model"],
-        temperature = state["temperature"]
+        temperature = state["temperature"],
+        langsmith_extra=ls_tracing
     )
     return {"final_answer": answer}
+
 
 def direct_answer(state: GraphState):
     """Direct answer node (when retrieval not needed)"""
     answer = generate_answer(
         state["user_query"],
         model=state["model"],
-        temperature=0.6
+        temperature=0.6,
+        langsmith_extra=ls_tracing
     )
     return {"final_answer": answer}
+
 
 # Build state machine
 def setup_workflow():
@@ -197,18 +207,22 @@ async def calm_adrd_agent_api(request: RequestBody):
     
     print(f"==== Initial Request from Openweb-UI portal: {request}")
     
+    ls_tracing["metadata"]["session_id"] = request.body_config.current_session.chat_id
+    
     initial_state = {
         **request.model_dump(),
+        "query_message": request.user_query,
         "adaptive_decision": None,
         "retrieved_docs": [],
         "filtered_docs": [],
         "missing_topics": [],
         "retry_count": 0,
-        "final_answer": None
+        "final_answer": None 
     }
     
     for step in calm_agent.stream(initial_state, stream_mode="values"):
-        print(f"Step: {step}")
+        # print(f"Step: {step}")
+        continue
     
     return step.get("final_answer")
 
@@ -247,7 +261,7 @@ if __name__ == "__main__":
         doc_number=4,
         max_retries=1,
         model="phi4:latest",
-        intermida_model="qwen2.5:latest",
+        intermediate_model="qwen2.5:latest",
         temperature=0.65,
         chat_session=[
             {

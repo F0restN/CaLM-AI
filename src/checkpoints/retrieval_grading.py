@@ -7,6 +7,7 @@ from langchain_core.tools import StructuredTool, ToolException
 from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser
 from langsmith import traceable
+import langsmith as ls
 
 from utils.logger import logger
 from classes.DocumentAssessment import DocumentAssessment, AnnotatedDocumentEvl
@@ -42,7 +43,8 @@ def grade_retrieval(
     question: str,
     retrieved_docs: List[Document],
     model: str = "llama3.2",
-    temperature: float = 0
+    temperature: float = 0,
+    langsmith_extra: dict = {}
 ) -> List[AnnotatedDocumentEvl]:
     """
     Grade the relevance of retrieved documents to a user question.
@@ -79,6 +81,7 @@ def grade_retrieval(
     chain = prompt | llm | json_parser
     
     results = []
+    
     for doc in retrieved_docs:
         try:
             result: DocumentAssessment = chain.invoke(
@@ -86,7 +89,8 @@ def grade_retrieval(
                     "question": question,
                     "document": doc.page_content
                 },
-                config={"response_format": "json"}
+                config={"response_format": "json", "configurable": {"thread_id": "127489423hj1h"}},
+                langsmith_extra=langsmith_extra
             )
             results.append(AnnotatedDocumentEvl(
                 document=doc,
@@ -99,7 +103,6 @@ def grade_retrieval(
                 "reasoning": f"Error during evaluation: {str(e)}",
                 "missing_aspects": ["Error in evaluation"]
             })
-
     return results
 
 grading_document = StructuredTool.from_function(
