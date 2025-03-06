@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
 from answer_generation import generate_answer
-from checkpoints.retrieval_grading import grade_retrieval
+from checkpoints.retrieval_grading import grade_retrieval_batch_sync
 from checkpoints.query_extander import query_extander
 from checkpoints.adaptive_decision import adaptive_rag_decision
 from embedding.vector_store import get_connection
@@ -86,7 +86,7 @@ def retrieve_documents(state: GraphState):
 
 def grade_documents(state: GraphState):
     """Document grading node"""
-    graded = grade_retrieval(
+    graded = grade_retrieval_batch_sync(
         state["query_message"],
         state["retrieved_docs"],
         model=state["intermediate_model"],
@@ -220,11 +220,19 @@ async def calm_adrd_agent_api(request: RequestBody):
         "final_answer": None 
     }
     
-    for step in calm_agent.stream(initial_state, stream_mode="values"):
-        # print(f"Step: {step}")
-        continue
-    
-    return step.get("final_answer")
+    try:
+        for step in calm_agent.stream(initial_state, stream_mode="values"):
+            # print(f"Step: {step}")
+            continue
+        
+        return step.get("final_answer")
+    except Exception as e:
+        logger.error(f"Error in calm_agent stream: {str(e)}")
+        return {
+            "answer": "Sorry, an error occurred while processing your request. Please try again later.", 
+            "sources": [],
+            "follow_up_questions": []
+        }
 
 
 @fastapi_app.get("/server-health-check")
@@ -241,6 +249,7 @@ def test(payload: RequestBody):
     
     initial_state = GraphState(
         **payload.model_dump(),
+        query_message=payload.user_query,
         adaptive_decision=None,
         retrieved_docs=[],
         filtered_docs=[],
@@ -257,12 +266,12 @@ if __name__ == "__main__":
     
     payload = RequestBody(
         user_query="my mom seems forgetting thinks, what should I do ?",
-        threshold=0.65,
+        threshold=0.60,
         doc_number=4,
         max_retries=1,
-        model="phi4:latest",
-        intermediate_model="qwen2.5:latest",
-        temperature=0.65,
+        model="llama3.3:latest",
+        intermediate_model="qwen2.5-coder:7b",
+        temperature=0.3,
         chat_session=[
             {
                 "id": "c3db2446-651b-4603-b2a8-2ba558c97ff4",
@@ -281,4 +290,4 @@ if __name__ == "__main__":
     
     r = test(payload)
     
-    print(r)
+    # print(r.model_dump_json(indent=2))

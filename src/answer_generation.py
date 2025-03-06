@@ -10,7 +10,7 @@ from classes.Generation import AIGeneration, Generation
 from classes.ChatSession import ChatMessage
 from utils.logger import logger
 from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
-
+from utils.llm_manager import _get_llm
 
 
 def generate_answer(
@@ -19,6 +19,7 @@ def generate_answer(
     chat_session: List[ChatMessage] = [],
     model: str = "llama3.2",
     temperature: float = 0,
+    tool_call_flag: bool = False,
     langsmith_extra: dict = {}
 ) -> Generation:
     """
@@ -35,44 +36,61 @@ def generate_answer(
     if not question:
         raise ValueError("Question and context required")
 
-    context = "\n".join(doc.page_content for doc in context_chunks)
-    source_list = [
-        {
-            "url": doc.metadata.get("source", ""),
-            "title": doc.metadata.get("title", "")
-        }
-        for doc in context_chunks
-    ]
+    context_page_content = "\n".join(doc.page_content for doc in context_chunks)
+
+    llm = _get_llm(model, temperature)
+    structured_llm = None
     
-    try:
-        json_parser = JsonOutputParser(pydantic_object=AIGeneration)
-        llm = ChatOllama(model=model, temperature=temperature)
+    if tool_call_flag:
         prompt = PromptTemplate(
             input_variables=["context", "question", "chat_session"],
-            partial_variables={"format_instructions": json_parser.get_format_instructions},
             template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT
         )
-
-        chain = prompt | llm | json_parser
-
-        response = chain.invoke(
+        structured_llm = prompt | llm.with_structured_output(schema=AIGeneration, method="function_calling", include_raw=False)
+    else:
+        json_parser = JsonOutputParser(pydantic_object=AIGeneration)
+        prompt = PromptTemplate(
+            input_variables=["context", "question", "chat_session"],
+            partial_variables={"format_instructions": json_parser.get_format_instructions()},
+            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT + "\n\nOutput Format: {format_instructions}"
+        )
+        structured_llm = prompt | llm | json_parser
+    
+    
+    try:
+        source_list = [
             {
-                "context": context_chunks,
+                "url": doc.metadata.get("url", "") or doc.metadata.get("source", ""),
+                "title": doc.metadata.get("title", "")
+            }
+            for doc in context_chunks
+        ]
+        
+        response = structured_llm.invoke(
+            {
+                "context": context_page_content,
                 "question": question,
                 "chat_session": []
-            }, 
-            config={"response_format": "markdown"},
+                # "chat_session": chat_session # Not for now
+            }
         )
         
+        if tool_call_flag:
+            response = Generation(
+                **response.model_dump(),
+                sources=source_list
+            )
+        else:
+            response = Generation(
+                **response,
+                sources=source_list
+            )
         
         logger.info(f"Answer generation completed for question: {question}, using model: {model}, temperature: {temperature}")
         logger.info(f"Appendix documents: {context_chunks}")
-        logger.info(f"Answer: {response['answer']}")
+        logger.info(f"Answer: {response.answer}")
 
-        return Generation(
-            **response,
-            sources=source_list
-        )
+        return response
         
     except Exception as e:
         logger.error(f"Answer generation failed: {str(e)}")
@@ -84,12 +102,12 @@ if __name__ == "__main__":
         Document(
             page_content="""Alzheimer's disease is a progressive neurologic disorder that causes the brain to shrink (atrophy) 
             and brain cells to die. It is the most common cause of dementia.""",
-            metadata={"url": "medical_text_1", "title": "ADRD"}
+            metadata={"source": "medical_text_1", "title": "ADRD"}
         ),
         Document(
             page_content="""Common symptoms include memory loss, confusion, and changes in thinking abilities. 
             Early diagnosis and management can help improve quality of life.""",
-            metadata={"url": "medical_text_2", "title": "Alzheimer's Disease"}
+            metadata={"source": "medical_text_2", "title": "Alzheimer's Disease"}
         )
     ]
     
@@ -124,7 +142,8 @@ if __name__ == "__main__":
         question="My parent is suffering from Alzheimer's disease, what should I do?",
         context_chunks=test_chunks,
         chat_session=test_chat_session,
-        model="phi4:latest"
+        model="qwen2.5",
+        tool_call_flag=False
     )
     
     print(answer.model_dump_json(indent=4))

@@ -1,9 +1,14 @@
-from loguru import logger
-from langchain_ollama import ChatOllama
+from typing import Optional, Dict
+
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langsmith import traceable
+from langchain_core.exceptions import OutputParserException
+
+from utils.logger import logger
+from utils.llm_manager import _get_llm
 from classes.AdaptiveDecision import AdaptiveDecision
+
+
+
 
 ADAPTIVE_RAG_DECISION_PROMPT = """
 
@@ -15,47 +20,55 @@ You are expert in routing questions to the right knowledge base.
 Given those information above, you will determine whether extra information from those two knowledge base will help model 
 answer question {question}
 
-If user's question: {question} is not related to research or peer_support, response 'False' for 'require_extra_re', otherwise 'True' and also determine which knowledge base is most relevant to user question: {question}, either 'research' or 'peer_support'
-
-Response format instruction:
-{format_instructions}
+If user's question: {question} is not related to research or peer_support, response 'False' for 'require_extra_re', otherwise 'True' and also determine which knowledge base is most relevant to user question: {question}, either 'research' or 'peer_support' or `NA` if require_extra_re is False
  
 """
 
 
 def adaptive_rag_decision(
-    query: str, 
-    model: str = "phi4:latest", 
+    query: str,
+    model: str = "qwen2.5-coder:7b",
     temperature: float = 0.1,
-    langsmith_extra: dict = {}
+    langsmith_extra: Optional[Dict] = None
 ) -> AdaptiveDecision:
     """
-    Decide whether extra retrieval step is necessary
-    """
+    Decide whether extra retrieval step is necessary for a given query.
     
-    json_parser = JsonOutputParser(pydantic_object=AdaptiveDecision)
+    Args:
+        query (str): The user's input query
+        model (str, optional): The model name to use. Defaults to "qwen2.5-coder:7b"
+        temperature (float, optional): The sampling temperature. Defaults to 0.1
+        langsmith_extra (Dict, optional): Extra parameters for langsmith. Defaults to None
+        
+    Returns:
+        AdaptiveDecision: A structured decision object containing require_extra_re and knowledge_base
+        
+    Raises:
+        ValueError: If query is empty or temperature is invalid
+        OutputParserException: If output parsing fails
+    """
     
     prompt = PromptTemplate(
         template=ADAPTIVE_RAG_DECISION_PROMPT,
         input_variables=["question"],
-        partial_variables={"format_instructions": json_parser.get_format_instructions}        
     )    
     
-    llm = ChatOllama(model=model, temperature=temperature, format="json")
+    llm = _get_llm(model, temperature)
     
-    chain = prompt | llm | json_parser
+    structured_llm = prompt | llm.with_structured_output(schema=AdaptiveDecision, method="function_calling", include_raw=False)
     
     try:
-        resp = chain.invoke({"question": query})
-        
-        logger.info("======================================================================")
-        logger.info(f"Adaptive decision for query {query} is {resp}")
-            
-        return AdaptiveDecision(**resp)
+        res = structured_llm.invoke({"question": query})
+        logger.info(f"Adaptive decision is {res.require_extra_re} for extra retrieval with TKB: {res.knowledge_base}")
+        return res
+    except OutputParserException as ope_err:
+        logger.error(f"Output parser exception: {ope_err} for user query: {query}, retry with strict mode")
+        return structured_llm.invoke({"question": query}, strict=True)
     except Exception as e:
-        raise e 
-    
+        logger.error(f"\nError in adaptive decision, for user query: {query} \n\n-------- \nError: {e}")
+        raise e
     
 if __name__ == "__main__":
-    res = adaptive_rag_decision("how's the whether today ?")
-    print(res)
+    res = adaptive_rag_decision("how's the whether today ?", model="qwen2.5-coder:7b")
+    print(type(res))
+    print(res.model_dump_json(indent=2))

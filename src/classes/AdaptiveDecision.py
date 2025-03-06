@@ -3,8 +3,14 @@ from pydantic import BaseModel, Field
 
 
 class AdaptiveDecision(BaseModel):
-    require_extra_re: bool = Field(description="True if extra retrieval is necessary otherwise False")
-    knowledge_base: Literal["research", "peer_support", None] = Field(description="Knowledge base that is most relevant to current user query or None if require_extra_re is false")
+    require_extra_re: bool = Field(
+        description="True if extra retrieval is necessary otherwise False",
+        default=False
+    )
+    knowledge_base: Literal["research", "peer_support", "NA"] = Field(
+        description="Knowledge base that is most relevant to current user query or NA if require_extra_re is false",
+        default="NA"
+    )
     
     class Config:
         arbitrary_types_allowed = True
