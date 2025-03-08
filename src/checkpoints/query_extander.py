@@ -61,7 +61,7 @@ def query_extander(
 
     try:
         res = structured_llm.invoke({"original_query":original_query, "missing_topics":missing_topics})
-        logger.info(f"Query extander running yield to {res['query']}")
+        logger.success(f"Query expanded to --> {res['query']}")
         return res['query']
     except Exception as e:
         logger.error(f"Error in query extander, for user query: {original_query}, retry with strict mode")

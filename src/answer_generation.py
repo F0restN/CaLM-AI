@@ -58,13 +58,21 @@ def generate_answer(
     
     
     try:
-        source_list = [
-            {
-                "url": doc.metadata.get("url", "") or doc.metadata.get("source", ""),
-                "title": doc.metadata.get("title", "")
-            }
-            for doc in context_chunks
-        ]
+        # Create a list of unique sources
+        seen_urls = set()
+        source_list = []
+        
+        for doc in context_chunks:
+            url = doc.metadata.get("url", "") or doc.metadata.get("source", "")
+            title = doc.metadata.get("title", "")
+            
+            # Only add if URL is not in seen_urls
+            if url not in seen_urls:
+                source_list.append({
+                    "url": url,
+                    "title": title
+                })
+                seen_urls.add(url)
         
         response = structured_llm.invoke(
             {

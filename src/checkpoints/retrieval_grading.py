@@ -3,7 +3,7 @@ import asyncio
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
-from langchain_core.output_parsers import OutputParserException
+from langchain_core.exceptions import OutputParserException
 
 from utils.logger import logger
 from utils.llm_manager import _get_llm
@@ -55,7 +55,7 @@ async def grade_retrieval(
         ValueError: If question is empty or retrieved_docs is empty
     """
     
-    logger.info(f"Grading relevance for question: {question}")
+    logger.info(f"Grading retrieved document relevance")
 
     prompt = PromptTemplate(
         template=GRADING_PROMPT,
@@ -66,10 +66,8 @@ async def grade_retrieval(
     
     structured_llm = prompt | llm.with_structured_output(schema=DocumentAssessment, method="function_calling", include_raw=False)
     
-    document_assessment = None
-    
     try:
-        document_assessment = await structured_llm.ainvoke(
+        document_assessment: DocumentAssessment = await structured_llm.ainvoke(
             {
                 "question": question,
                 "document": retrieved_doc.page_content
@@ -81,12 +79,22 @@ async def grade_retrieval(
         # doc.metadata["reasoning"] = result.reasoning
         # doc.metadata["missing_topics"] = result.missing_topics
         
+        return AnnotatedDocumentEvl(
+            document=retrieved_doc,
+            **document_assessment.model_dump()
+        )
+        
     except OutputParserException as ope_err:
         logger.error(f"Output parser exception: {ope_err}")
         document_assessment = structured_llm.invoke({"question": question, "document": retrieved_doc.page_content}, strict=True)
         
+        return AnnotatedDocumentEvl(
+            document=retrieved_doc,
+            **document_assessment.model_dump()
+        )
+        
     except Exception as e:
-        logger.error(f"Document: {retrieved_doc.page_content}")
+        logger.error(f"Error: {e}, with document: {retrieved_doc.page_content}")
         return AnnotatedDocumentEvl(
             document=retrieved_doc,
             relevance_score=0.0,
@@ -94,10 +102,7 @@ async def grade_retrieval(
             missing_topics=["Error in evaluation"]
         )
         
-    return AnnotatedDocumentEvl(
-        document=retrieved_doc,
-        **document_assessment.model_dump()
-    )
+
 
 
 async def grade_retrieval_batch(
@@ -158,16 +163,15 @@ if __name__ == "__main__":
             ),
             Document(
                 """
-                Common symptoms of ADRD (Alzheimer's Disease and Related Dementias) include memory loss,
-                difficulty in planning or problem solving, confusion with time or place, and changes in mood
-                and personality. Early diagnosis is crucial for better management of the condition.
+                Hospice services are designed to support individuals towards the end of life. Care can be provided wherever the person resides – including at home or in a care facility. This includes visiting nurses, pain management, and personal care. Hospice can also provide spiritual, grief, and bereavement support as well as respite for family caregivers.
+                    Hospice is a Medicare benefit and individuals are eligible when a doctor has determined a patient has 6 months or less to live. Ask your doctor for a referral to begin services, or hospice can assist you in getting a referral if the patient is eligible.
                 """
             )
         ]
 
-        user_input = "what is adrd ?"
+        user_input = "What are the benefits of hospice care for individuals in the advanced stages of Alzheimer's disease?"
         
-        res = grade_retrieval_batch_sync(
+        res = await grade_retrieval_batch(
             user_input, test_docs, model="qwen2.5-coder:7b", temperature=0
         )
         

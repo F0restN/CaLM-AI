@@ -1,25 +1,22 @@
 import os
-import logging
-import json
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from fastapi import FastAPI
+from dotenv import load_dotenv
 
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
 from answer_generation import generate_answer
-from checkpoints.retrieval_grading import grade_retrieval_batch, grade_retrieval_batch_sync
+from checkpoints.retrieval_grading import grade_retrieval_batch
 from checkpoints.query_extander import query_extander
 from checkpoints.adaptive_decision import adaptive_rag_decision
 from embedding.vector_store import get_connection
 from embedding.embedding_models import get_nomic_embedding
-from dotenv import load_dotenv
+from utils.logger import logger
 
 load_dotenv()
 
 fastapi_app = FastAPI()
-
-logger = logging.getLogger("uvicorn.access")
 
 ls_tracing = {"project_name": os.getenv("LANGSMITH_PROJECT"), "metadata": {"session_id": None}}
 
@@ -65,7 +62,7 @@ def detect_intention(state):
         temperature=state["temperature"],
         langsmith_extra=ls_tracing
     )
-        
+    
     return {"adaptive_decision": decision}
 
 
@@ -78,6 +75,9 @@ def retrieve_documents(state: GraphState):
         cls_kb = r_kb
     
     docs = cls_kb.similarity_search(state["query_message"], k=state["doc_number"])
+    
+    logger.success(f"Similarity search retrieved | {len(docs)} | documents")
+    
     return {
         "retrieved_docs": docs, 
         "retry_count": state["retry_count"] + 1
@@ -94,13 +94,19 @@ async def grade_documents(state: GraphState):
         langsmith_extra=ls_tracing
     )
     
-    filtered = []
+    filtered = state["filtered_docs"]
     missing = []
     for doc in graded:
         if doc.relevance_score >= state["threshold"]:
-            filtered.append(doc)
+            
+            # Remove duplicates
+            if doc not in filtered:
+                filtered.append(doc)
+                
         else:
             missing.extend(doc.missing_topics)
+    
+    logger.success(f"Filtered in {len(filtered)} documents, out of {len(graded)} graded documents")
     
     return {
         "filtered_docs": sorted(filtered, key=lambda x: x.relevance_score, reverse=True),
@@ -117,6 +123,7 @@ def expand_query(state: GraphState):
         temperature=state["temperature"],
         langsmith_extra=ls_tracing
     )
+    
     return {
         "query_message": new_query,
     }
@@ -205,9 +212,13 @@ calm_agent = setup_workflow()
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody):
     
-    print(f"==== Initial Request from Openweb-UI portal: {request}")
+    logger.info(f"Processing request: {request.user_query}, for user: {request.body_config.current_session.user_id}")
+    
+    logger.info(f"==== Initial Request from Openweb-UI portal: {request.model_dump_json(indent=4)}")
     
     ls_tracing["metadata"]["session_id"] = request.body_config.current_session.chat_id
+    
+    ls_tracing["metadata"]["user_id"] = request.body_config.current_session.user_id
     
     initial_state = {
         **request.model_dump(),
@@ -222,7 +233,6 @@ async def calm_adrd_agent_api(request: RequestBody):
     
     try:
         async for step in calm_agent.astream(initial_state, stream_mode="values"):
-            # print(f"Step: {step}")
             continue
         
         return step.get("final_answer")

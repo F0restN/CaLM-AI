@@ -59,7 +59,7 @@ def adaptive_rag_decision(
     
     try:
         res = structured_llm.invoke({"question": query})
-        logger.info(f"Adaptive decision is {res.require_extra_re} for extra retrieval with TKB: {res.knowledge_base}")
+        logger.success(f"Adaptive decision | {res.require_extra_re} | for extra retrieval, with TKB | {res.knowledge_base}")
         return res
     except OutputParserException as ope_err:
         logger.error(f"Output parser exception: {ope_err} for user query: {query}, retry with strict mode")
