@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
 from answer_generation import generate_answer
-from checkpoints.retrieval_grading import grade_retrieval_batch_sync
+from checkpoints.retrieval_grading import grade_retrieval_batch, grade_retrieval_batch_sync
 from checkpoints.query_extander import query_extander
 from checkpoints.adaptive_decision import adaptive_rag_decision
 from embedding.vector_store import get_connection
@@ -84,9 +84,9 @@ def retrieve_documents(state: GraphState):
     }
 
 
-def grade_documents(state: GraphState):
+async def grade_documents(state: GraphState):
     """Document grading node"""
-    graded = grade_retrieval_batch_sync(
+    graded = await grade_retrieval_batch(
         state["query_message"],
         state["retrieved_docs"],
         model=state["intermediate_model"],
@@ -116,7 +116,7 @@ def expand_query(state: GraphState):
         model=state["intermediate_model"],
         temperature=state["temperature"],
         langsmith_extra=ls_tracing
-    )[0]
+    )
     return {
         "query_message": new_query,
     }
@@ -221,7 +221,7 @@ async def calm_adrd_agent_api(request: RequestBody):
     }
     
     try:
-        for step in calm_agent.stream(initial_state, stream_mode="values"):
+        async for step in calm_agent.astream(initial_state, stream_mode="values"):
             # print(f"Step: {step}")
             continue
         

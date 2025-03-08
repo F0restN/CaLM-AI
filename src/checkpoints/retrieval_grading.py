@@ -1,9 +1,9 @@
 from typing import List, Dict, Any
 import asyncio
 
-from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
+from langchain_core.output_parsers import OutputParserException
 
 from utils.logger import logger
 from utils.llm_manager import _get_llm
@@ -66,8 +66,10 @@ async def grade_retrieval(
     
     structured_llm = prompt | llm.with_structured_output(schema=DocumentAssessment, method="function_calling", include_raw=False)
     
+    document_assessment = None
+    
     try:
-        result: DocumentAssessment = structured_llm.invoke(
+        document_assessment = await structured_llm.ainvoke(
             {
                 "question": question,
                 "document": retrieved_doc.page_content
@@ -78,20 +80,25 @@ async def grade_retrieval(
         # doc.metadata["relevance_score"] = result.relevance_score
         # doc.metadata["reasoning"] = result.reasoning
         # doc.metadata["missing_topics"] = result.missing_topics
-            
-        return AnnotatedDocumentEvl(
-            document=retrieved_doc,
-            **result.model_dump()
-        )
+        
+    except OutputParserException as ope_err:
+        logger.error(f"Output parser exception: {ope_err}")
+        document_assessment = structured_llm.invoke({"question": question, "document": retrieved_doc.page_content}, strict=True)
         
     except Exception as e:
-        logger.error(f"Error during grading: {str(e)}")
+        logger.error(f"Document: {retrieved_doc.page_content}")
         return AnnotatedDocumentEvl(
             document=retrieved_doc,
             relevance_score=0.0,
             reasoning=f"Error during evaluation: {str(e)}",
             missing_topics=["Error in evaluation"]
         )
+        
+    return AnnotatedDocumentEvl(
+        document=retrieved_doc,
+        **document_assessment.model_dump()
+    )
+
 
 async def grade_retrieval_batch(
     question: str,
@@ -115,6 +122,7 @@ async def grade_retrieval_batch(
     ])
     return results
 
+
 def grade_retrieval_batch_sync(
     question: str,
     retrieved_docs: List[Document],
@@ -133,6 +141,7 @@ def grade_retrieval_batch_sync(
     """
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(grade_retrieval_batch(question, retrieved_docs, **kwargs))
+
 
 if __name__ == "__main__":
     async def main():
