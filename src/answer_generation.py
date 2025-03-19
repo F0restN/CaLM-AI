@@ -150,8 +150,8 @@ if __name__ == "__main__":
         question="My parent is suffering from Alzheimer's disease, what should I do?",
         context_chunks=test_chunks,
         chat_session=test_chat_session,
-        model="qwen2.5",
-        tool_call_flag=False
+        model="qwq:latest",
+        tool_call_flag=True
     )
     
     print(answer.model_dump_json(indent=4))

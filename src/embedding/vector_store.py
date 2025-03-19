@@ -1,8 +1,9 @@
+from typing import List
+
 from langchain_postgres import PGVector
-from langchain_postgres.vectorstores import PGVector
+from langchain.schema import Document
 
-
-def get_connection(connection: str, embedding_model, collection_name: str):
+def get_connection(connection: str, embedding_model, collection_name: str) -> PGVector:
     if not collection_name:
         raise ("Collection Name can not be empty")
     
@@ -12,6 +13,14 @@ def get_connection(connection: str, embedding_model, collection_name: str):
         connection=connection,
         use_jsonb=True,
     )
+
+
+def similarity_search(query:str, kb:PGVector = None, k:int=10) -> List[Document]:
+    if kb is None:
+        raise ValueError("KB can not be None")
+    
+    res = kb.similarity_search(query=query, k=k)
+    return res
 
 if __name__ == "__main__":
     import os

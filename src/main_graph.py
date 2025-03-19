@@ -257,10 +257,9 @@ def generate_graph_diagram():
     logger.info("Generating graph diagram")
     return calm_agent.get_graph().draw_mermaid_png(output_file_path="./public/calm_adrd_langgraph_diagram.png")
 
-# ===================================================== | TEST Service | =====================================================
 
-async def test_calm_adrd_agent_api(payload: RequestBody):
-        
+def test(payload: RequestBody):
+    
     initial_state = GraphState(
         **payload.model_dump(),
         query_message=payload.user_query,
@@ -269,30 +268,14 @@ async def test_calm_adrd_agent_api(payload: RequestBody):
         filtered_docs=[],
         missing_topics=[],
         retry_count=0,
-        final_answer=None 
     )
     
-    try:
-        async for step in calm_agent.astream(initial_state, stream_mode="values"):
-            
-            
-            print(step)
-            
-            continue
-        
-        return step.get("final_answer")
-    except Exception as e:
-        logger.error(f"Error in calm_agent stream: {str(e)}")
-        return {
-            "answer": "Sorry, an error occurred while processing your request. Please try again later.", 
-            "sources": [],
-            "follow_up_questions": []
-        }
+    res = calm_agent.invoke(initial_state)
+
+    return res.get("final_answer")
 
 
 if __name__ == "__main__":
-    
-    import asyncio
     
     payload = RequestBody(
         user_query="my mom seems forgetting thinks, what should I do ?",
@@ -318,6 +301,6 @@ if __name__ == "__main__":
         ],
     )
     
-    r = asyncio.run(test_calm_adrd_agent_api(payload))
+    r = test(payload)
     
-    print(r.model_dump_json(indent=2))
+    # print(r.model_dump_json(indent=2))
