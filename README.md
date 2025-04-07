@@ -4,49 +4,14 @@ An intelligent RAG (Retrieval-Augmented Generation) system designed to assist ca
 
 ![Rag workflow](./public/calm-workflow.png)
 
-## 📚 Documentation
-
-Add project src folder to python path
-
 ## 🌟 Features
 
-- **Specialized Knowledge Base**: Curated information focused on ADRD caregiving
-- **Local LLM Integration**: Uses Ollama for privacy-focused, local language model inference
-- **Advanced RAG Pipeline**: Implements sophisticated retrieval-augmented generation for accurate responses
-- **PubMed Integration**: Automatic retrieval of latest research and medical information
-- **Vector Store**: Efficient storage and retrieval of embeddings using Chroma DB
+### AI Memory
+Memory are categoriezed into two level Long term memory (LTM) and short term memory (STM), Bio, job, social relationship, relationship with care recipient, topics if interest to user etc.,are considered as global level memory which is LTM and stored in the database. Preferences, answer tone, language, etc., are considered as short term memory. They will be stored in runtime variable. Some of them are loaded from disk while others are inferred from rounds of converation.
 
-## 📁 Project Structure
-
-```text
-.
-├── src/
-│   ├── embedding/
-│   │   ├── embedding_models.py    # Embedding model implementations
-│   │   ├── vector_store.py        # Vector store operations
-│   │   ├── chunking.py           # Text chunking utilities
-│   │   └── script_vectorize.ipynb # Vectorization notebook
-│   ├── ingestion/
-│   │   └── pubmed_auto_search.py  # PubMed data ingestion
-│   └── answer_generation.py       # Main RAG pipeline
-├── data/
-│   ├── raw_content/              # Raw knowledge base content
-│   └── vector_database/          # Chroma DB storage
-└── logs/                         # System logs
-```
+All memory will be generated and express as a sentences.
 
 ## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- Ollama installed locally
-- Required Python packages (install via pip):
-  - langchain
-  - chromadb
-  - pandas
-  - numpy
-  - transformers
 
 ### Installation
 
@@ -89,10 +54,6 @@ pip install -r requirements.txt
 - All processing is done locally
 - No sensitive data is sent to external services
 - Secure storage of medical and personal information
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
