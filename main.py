@@ -60,14 +60,6 @@ def main(requestBody: RequestBody, **kwargs):
         print("No need to retrieve from KB")
         return generate_answer(latest_human_message, model=model, temperature=0.6)
     
-
-    # Get relevant document, search professional kb either way 
-    # relevant_doc = []    
-    # TODO: Format issue, haven't been used for generation
-    # relevant_doc.append(
-    #     r_kb.similarity_search(latest_human_message)
-    # )
-    
     ## Retrieve relevant documents according to user's intention
     if adaptive_decision.knowledge_base == "peer_support":
         crs_kb = p_kb

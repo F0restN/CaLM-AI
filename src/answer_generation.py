@@ -2,9 +2,8 @@ from typing import List
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
-from langchain_ollama import ChatOllama
 from langchain_core.output_parsers import JsonOutputParser
-from langsmith import traceable
+from langchain_core.messages import AIMessage
 
 from classes.Generation import AIGeneration, Generation
 from classes.ChatSession import ChatMessage
@@ -48,7 +47,7 @@ def generate_answer(
         )
         structured_llm = prompt | llm.with_structured_output(schema=AIGeneration, method="function_calling", include_raw=False)
     else:
-        json_parser = JsonOutputParser(pydantic_object=AIGeneration)
+        json_parser = JsonOutputParser(pydantic_object=AIMessage)
         prompt = PromptTemplate(
             input_variables=["context", "question", "chat_session"],
             partial_variables={"format_instructions": json_parser.get_format_instructions()},
@@ -150,10 +149,12 @@ if __name__ == "__main__":
         question="My parent is suffering from Alzheimer's disease, what should I do?",
         context_chunks=test_chunks,
         chat_session=test_chat_session,
-        model="qwq:latest",
-        tool_call_flag=True
+        model="deepseek-r1:14b",
+        tool_call_flag=False
     )
     
     print(answer.model_dump_json(indent=4))
     
     # print(f"\nGenerated Answer:\n{answer}")
+
+

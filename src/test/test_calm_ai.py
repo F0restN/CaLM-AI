@@ -1,19 +1,17 @@
 import os
 import pytest
 import pandas as pd
-import asyncio
 
 from langchain_core.documents import Document
-
 from checkpoints.adaptive_decision import adaptive_rag_decision
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.DocumentAssessment import AnnotatedDocumentEvl
-from classes.RequestBody import RequestBody
 from embedding.vector_store import get_connection, similarity_search
 from embedding.embedding_models import get_nomic_embedding
+from generation_rm import generation_with_rm
 
-from main_graph import detect_intention, expand_query, generate_final_answer, retrieve_documents
+from main_graph import detect_intention, retrieve_documents
 
 ds_test = pd.read_parquet("src/test/rag-test-dataset.parquet")
 
@@ -99,30 +97,6 @@ async def test_grading_retrieval(question):
     for doc in res:
         assert isinstance(doc, AnnotatedDocumentEvl)
         
-
-# @pytest.mark.parametrize("question", questions)
-# @pytest.mark.asyncio
-# async def test_calm_by_step(question):
-    
-#     payload = RequestBody(
-#         user_query=question,
-#         threshold=0.60,
-#         doc_number=4,
-#         max_retries=1,
-#         model="llama3.3:latest",
-#         intermediate_model="qwen2.5-coder:7b",
-#         temperature=0.3,
-#         chat_session=[],
-#     )
-    
-
-# test_query_expander
-
-
-def test_final_generation(question):
-    
-    state = {
-        "user_query": question,
-        "context_chunks": [],
-        }
-    
+@pytest.mark.parametrize("question", questions)
+def test_reasoning_model_use(question):
+    print(generation_with_rm([], question, []))
