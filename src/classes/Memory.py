@@ -1,5 +1,5 @@
-import datetime
-from typing import List, Literal, Any
+from datetime import datetime
+from typing import List, Literal
 from pydantic import BaseModel, Field
 from uuid import uuid4
 
@@ -16,30 +16,35 @@ TODO: a sub class for sentence will be created. need to be able to convert attri
 
 NOTE: attributes should include: level (granularity), type (e.g. bio, job, social relationship, relationship with care recipient, topics if interest to user etc.,), content (the sentence), source (e.g. user, system, care recipient, etc.), timestamp (when the sentence is created).
 
+NOTE:
+category, type, content in sentence. 
+e.g. "The user's {job} is a {nurse}" / "[CATEGORY: {ALZ}] The user's {care recipient} is {dad}"
+level, type, source, timestamp in attributes.
 """
 
 
 class MemoryItem(BaseModel):
     id: int = Field(default_factory=lambda: uuid4().int, description="The unique identifier for the memory item")
     content: str = Field(description="Actual content of this memory attribute")
-    level: str = Field(description="To which level of granularity this memory attribute belongs to")
+    level: Literal["LTM", "STM"] = Field(description="To which level of granularity this memory attribute belongs to")
+    category: str = Field(description="category of this memory attribute")
     type: str = Field(description="attribute name")
     source: str = Field(description="where this memory comes from")
     timestamp: datetime = Field(description="when this memory is created")
+    metadata: dict = Field(default_factory=lambda data: {
+        "category": data['category'],
+        "level": data['level'],
+        "type": data['type'],
+        "source": data['source'],
+        "timestamp": data['timestamp']
+    }, description="Additional metadata about the memory item")
     
-    def __init__(self, id: int, content: str, level: str, type: str, source: str, timestamp: datetime):
-        self.id = id
-        self.content = content
-        self.level = Literal["LTM", "STM"]
-        self.type = type
-        self.source = source
-        self.timestamp = timestamp
+    def convert_to_sentence(cls, categories: List[str]):
+        if cls.category in categories:
+            return f"[CATEGORY: {cls.category}] The user's {cls.type} is {cls.content}"
+        else:
+            return f"The user's {cls.type} is {cls.content}"
     
-    @classmethod
-    def convert_to_sentence(cls):
-        pass
-    
-    @classmethod
     def convert_to_attributes(cls):
         pass
         
@@ -52,14 +57,13 @@ class MemoryItem(BaseModel):
 
 class Memory(BaseModel):
     id: int
-    relationship: List[str]
-    
+    user_profile: List[MemoryItem]
     created_at: datetime
     updated_at: datetime
 
-    def __init__(self, id: int, content: str, created_at: datetime, updated_at: datetime):
+    def __init__(self, id: int, user_profile: List[MemoryItem], created_at: datetime, updated_at: datetime):
         self.id = id
-        self.content = content
+        self.user_profile = user_profile
         self.created_at = created_at
         self.updated_at = updated_at
 
@@ -68,67 +72,3 @@ class Memory(BaseModel):
 
     def __repr__(self):
         return self.__str__()
-
-
-class MetadataString(BaseModel):
-    """
-    A class representing a string with metadata.
-    """
-    content: str = Field(description="The actual string content")
-    metadata: dict = Field(default_factory=dict, description="Additional metadata about the string")
-    created_at: datetime = Field(default_factory=datetime.now, description="When the string was created")
-    updated_at: datetime = Field(default_factory=datetime.now, description="When the string was last updated")
-    
-    def __str__(self) -> str:
-        return self.content
-    
-    def update_metadata(self, key: str, value: Any) -> None:
-        """
-        Update a specific metadata field.
-        
-        Args:
-            key: The metadata key to update
-            value: The new value for the metadata
-        """
-        self.metadata[key] = value
-        self.updated_at = datetime.now()
-    
-    def get_metadata(self, key: str, default: Any = None) -> Any:
-        """
-        Get a specific metadata value.
-        
-        Args:
-            key: The metadata key to retrieve
-            default: Default value if key doesn't exist
-            
-        Returns:
-            The metadata value or default if not found
-        """
-        return self.metadata.get(key, default)
-    
-    def to_dict(self) -> dict:
-        """
-        Convert the MetadataString to a dictionary.
-        
-        Returns:
-            A dictionary representation of the MetadataString
-        """
-        return {
-            "content": self.content,
-            "metadata": self.metadata,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict) -> "MetadataString":
-        """
-        Create a MetadataString from a dictionary.
-        
-        Args:
-            data: Dictionary containing the string data
-            
-        Returns:
-            A new MetadataString instance
-        """
-        return cls(**data)
