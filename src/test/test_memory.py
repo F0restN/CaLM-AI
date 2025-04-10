@@ -4,11 +4,19 @@ from classes.Memory import MemoryItem, Memory
 
 user_profile = [
     {
-        "type": "name",
-        "content": "John",
+        "type": "preference",
+        "content": "step-by-step reasoning with references",
         "category": "USER INFO",
-        "level": "LTM",
+        "level": "STM",
         "source": "user",
+        "timestamp": "2025-04-10"
+    },
+    {
+        "type": "care recipient relationship",
+        "content": "filiation",
+        "category": "ALZ INFO",
+        "level": "LTM",
+        "source": "user query",
         "timestamp": "2025-04-10"
     }
 ]
@@ -18,8 +26,7 @@ def test_memory_item(user_profile):
     obj = MemoryItem(**user_profile)
     
     res = obj.convert_to_sentence(categories=["USER INFO"])
-    print(obj.metadata)
-    print(res)
+    print("\n", res)
     return res
 
 

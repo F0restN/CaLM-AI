@@ -11,6 +11,8 @@ Memory are categoriezed into two level Long term memory (LTM) and short term mem
 
 All memory will be generated and express as a sentences.
 
+![AI Memory workflow](./public/calm-memory.png)
+
 From technical perpective, we defined two classes: `MemoryItem` used for classify each item/attribute in user profile and `Memory` the overall user profile
 
 ```python
