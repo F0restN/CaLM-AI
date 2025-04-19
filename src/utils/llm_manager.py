@@ -1,6 +1,7 @@
 import os
 
 from functools import lru_cache
+from langchain_core.messages import AIMessage
 from langchain_ollama import ChatOllama
 from langchain_deepseek import ChatDeepSeek
 
@@ -19,6 +20,6 @@ def _get_deepseek(model, temperature):
 if __name__ == "__main__":
     ds_llm = _get_deepseek(model = "deepseek-reasoner", temperature=0.6)
     
-    res = ds_llm.invoke("who are you")
+    res:AIMessage = ds_llm.invoke("who are you")
     
     print(res)

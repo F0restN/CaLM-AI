@@ -3,6 +3,7 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from fastapi import FastAPI
 from dotenv import load_dotenv
+from pprint import pprint
 
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
@@ -133,7 +134,7 @@ def expand_query(state: GraphState):
 
 def generate_final_answer(state: GraphState):
     """Final answer generation node"""
-    chat_session = state["chat_session"][-4:-1] if len(state["chat_session"]) >=4 else state["chat_session"]
+    chat_session = state["chat_session"][-6:-1] if len(state["chat_session"]) >=4 else state["chat_session"]
     
     answer = generate_answer(
         question = state["user_query"],
@@ -141,19 +142,24 @@ def generate_final_answer(state: GraphState):
         chat_session = chat_session,
         model = state["model"],
         temperature = state["temperature"],
-        tool_call_flag = tool_call_flag,
-        langsmith_extra=ls_tracing
+        isInformal = False
     )
     return {"final_answer": answer}
 
 
 def direct_answer(state: GraphState):
     """Direct answer node (when retrieval not needed)"""
+    
+    chat_session = state["chat_session"][-6:-1] if len(state["chat_session"]) >=4 else state["chat_session"]
+    
+    pprint(chat_session)
+    
     answer = generate_answer(
-        state["user_query"],
-        model=state["model"],
-        temperature=0.6,
-        langsmith_extra=ls_tracing
+        question = state["user_query"],
+        chat_session = chat_session,
+        model = state["model"],
+        temperature = state["temperature"],
+        isInformal = True
     )
     return {"final_answer": answer}
 
@@ -217,11 +223,9 @@ async def calm_adrd_agent_api(request: RequestBody):
     
     logger.info(f"Processing request: {request.user_query}, for user: {request.body_config.current_session.user_id}")
     
-    logger.info(f"==== Initial Request from Openweb-UI portal: {request.model_dump_json(indent=4)}")
-    
-    ls_tracing["metadata"]["session_id"] = request.body_config.current_session.chat_id
-    
-    ls_tracing["metadata"]["user_id"] = request.body_config.current_session.user_id
+    # logger.info(f"==== Initial Request from Openweb-UI portal: {request.model_dump_json(indent=4)}")
+    # ls_tracing["metadata"]["session_id"] = request.body_config.current_session.chat_id
+    # ls_tracing["metadata"]["user_id"] = request.body_config.current_session.user_id
     
     initial_state = {
         **request.model_dump(),
@@ -237,7 +241,6 @@ async def calm_adrd_agent_api(request: RequestBody):
     try:
         async for step in calm_agent.astream(initial_state, stream_mode="values"):
             continue
-        
         return step.get("final_answer")
     except Exception as e:
         logger.error(f"Error in calm_agent stream: {str(e)}")

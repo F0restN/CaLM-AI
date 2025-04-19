@@ -45,3 +45,17 @@ Below is relevant information to guide your response:
 Chat history for reference:
 {chat_session}
 """
+
+
+BASIC_PROMPT = """
+You are a helpful assistant that can answer questions based on the provided context. Use your best knowledge and judgement to answer the question. You tone should be friendly and professional.
+
+Context:
+{context}
+
+Question:
+{question}
+
+Chat history for reference:
+{chat_session}
+"""
