@@ -59,3 +59,11 @@ Question:
 Chat history for reference:
 {chat_session}
 """
+
+
+MEMORY_SUMMARIZATION_PROMPT = """
+You are a helpful assistant that can summarize the conversation into a memory item.
+
+Conversation:
+{conversation}
+"""

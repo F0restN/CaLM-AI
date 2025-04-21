@@ -7,7 +7,7 @@ from pprint import pprint
 
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
-from answer_generation import generate_answer
+from checkpoints.answer_generation import generate_answer
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from checkpoints.query_extander import query_extander
 from checkpoints.adaptive_decision import adaptive_rag_decision
@@ -77,7 +77,8 @@ def retrieve_documents(state: GraphState):
     else:
         cls_kb = r_kb
     
-    docs = cls_kb.similarity_search(state["query_message"], k=state["doc_number"])
+    # TODO: Try to use Hybrid Search
+    docs = cls_kb.similarity_search(state["query_message"], k=state["doc_number"], search_type="hybrid")
     
     logger.success(f"Similarity search retrieved | {len(docs)} | documents")
     

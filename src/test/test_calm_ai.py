@@ -9,7 +9,6 @@ from classes.AdaptiveDecision import AdaptiveDecision
 from classes.DocumentAssessment import AnnotatedDocumentEvl
 from embedding.vector_store import get_connection, similarity_search
 from embedding.embedding_models import get_nomic_embedding
-from generation_rm import generation_with_rm
 
 from main import detect_intention, retrieve_documents
 
@@ -97,7 +96,6 @@ async def test_grading_retrieval(question):
     for doc in res:
         assert isinstance(doc, AnnotatedDocumentEvl)
 
-
-@pytest.mark.parametrize("question", questions)
-def test_reasoning_model_use(question):
-    print(generation_with_rm([], question, []))
+    
+    
+r_kb.from_documents()

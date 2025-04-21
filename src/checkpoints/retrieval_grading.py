@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List
 import asyncio
 
 from langchain_core.prompts import PromptTemplate
@@ -55,7 +55,7 @@ async def grade_retrieval(
         ValueError: If question is empty or retrieved_docs is empty
     """
     
-    logger.info(f"Grading retrieved document relevance")
+    logger.info("Grading retrieved document relevance")
 
     prompt = PromptTemplate(
         template=GRADING_PROMPT,

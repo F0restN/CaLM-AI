@@ -1,0 +1,14 @@
+[lint]
+select = ["ALL"]
+
+ignore = [
+    "D100",
+    "D105", # Function doc for every function
+    "S101",
+    "INP001", # __init__ for implicit namespace
+    "T201", # No print
+]
+
+exclude = [
+    "**/test/**",
+]

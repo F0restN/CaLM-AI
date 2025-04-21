@@ -1,9 +1,7 @@
-import numpy as np
 
 from typing import List
 from math import log2
 from sentence_transformers import SentenceTransformer, util
-from sklearn.metrics import ndcg_score
 
 ## ROUGE Evaluation
 def calculate_rouge_scores(predictions: List[str], references: List[str]):

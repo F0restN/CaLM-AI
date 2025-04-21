@@ -9,7 +9,7 @@ from classes.Generation import AIGeneration, Generation
 from classes.ChatSession import ChatMessage
 from utils.logger import logger
 from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT, BASIC_PROMPT
-from utils.llm_manager import _get_llm, _get_deepseek
+from utils.llm_manager import _get_deepseek
 
 
 def generate_answer(
