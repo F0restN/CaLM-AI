@@ -15,9 +15,9 @@ are considered as global level memory which is LTM and stored in the database
 Preferences, answer tone, language, etc., are considered as short term memory.
 
 All memory will be generated and express as a sentences. Hence, for that sub class:
-TODO: a sub class for sentence will be created. need to be able to convert attributes into sentences and vice versa.
+TODO: finalize the class. Including documentation and attributes definition.
 
-NOTE: attributes should include: level (granularity), type (e.g. bio, job, social relationship, relationship with care recipient,topics if interest to 
+NOTE: attributes should include: level (granularity), type (e.g. bio, job, social relationship, relationship with care recipient,topics if interest to
 user etc.,),content (the sentence), source (e.g. user, system, care recipient, etc.), timestamp (when the sentence is created).
 
 NOTE:
@@ -34,12 +34,13 @@ class BaseMemory(BaseModel):
     level: Literal["LTM", "STM"] = Field(description="To which level of granularity this memory attribute belongs to")
     category: str = Field(description="category of this memory attribute")
     type: str = Field(description="attribute name")
+    topic: list[str] = Field(description="3 words topics that most representative to the content of this memory")
 
 class MemoryItem(BaseMemory):
     """Memory item for AI function calling."""
 
     id: int = Field(default_factory=lambda: uuid4().int, description="The unique identifier for the memory item")
-    user_id: str = Field(description="The unique identifier for the user")
+    user_id: str = Field(..., description="The unique identifier for the user")
     source: str = Field(description="where this memory comes from")
     timestamp: datetime = Field(
         description="when this memory is created, must be string",
@@ -47,12 +48,17 @@ class MemoryItem(BaseMemory):
     )
     metadata: dict = Field(
         default_factory=lambda data: {
-            "category": data["category"],
+            "id": data["id"],
+            "user_id": data["user_id"],
+            # Content provided in document pageContent attribute
             "level": data["level"],
+            "category": data["category"],
             "type": data["type"],
+            "topic": data["topic"],
             "source": data["source"],
-        "timestamp": data["timestamp"].isoformat() if isinstance(data["timestamp"], datetime) else data["timestamp"],
-    }, description="Additional metadata about the memory item")
+            "timestamp": data["timestamp"].isoformat() if isinstance(data["timestamp"], datetime) else data["timestamp"],
+        }, description="Additional metadata about the memory item",
+    )
 
     def convert_to_sentence(self, categories: list[str] = CATEGORIES) -> str:
         """Convert the memory item to a sentence."""
@@ -65,7 +71,7 @@ class MemoryItem(BaseMemory):
     #     pass
 
     def __str__(self) -> str:
-        return f"MemoryItem(id={self.id}, content={self.content}, level={self.level}, type={self.type}, source={self.source}, timestamp={self.timestamp})"
+        return f"MemoryItem(id={self.id}, content={self.content}, level={self.level}, type={self.type}, source={self.source}, timestamp={self.timestamp}, topic={self.topic})"
 
     def __repr__(self) -> str:
         return self.__str__()

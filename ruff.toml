@@ -6,8 +6,15 @@ ignore = [
     "D105", # Function doc for every function
     "S101",
     "INP001", # __init__ for implicit namespace
-    "T201", # No print
+    "T201", # No print,
+    
+    # About TODO
+    "TD002",
+    "TD003",
+    "FIX002",
 ]
+
+target-version = "py310"
 
 exclude = [
     "**/test/**",
