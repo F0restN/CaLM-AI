@@ -55,7 +55,12 @@ PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
 p_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(), collection_name='peer_support_kb')
 r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(), collection_name='research_kb')
 
-# Define node functions
+# TODO: Memory procedures - Recall user relevant memories from LTM.
+
+# TODO: Memory - summarize user's memories.
+
+# TODO: Episodic memory.
+
 def detect_intention(state):
     """User intention detection node"""
     
@@ -164,6 +169,9 @@ def direct_answer(state: GraphState):
     )
     return {"final_answer": answer}
 
+
+def store_memory(state: GraphState):
+    """Persist memory"""
 
 # Build state machine
 def setup_workflow():

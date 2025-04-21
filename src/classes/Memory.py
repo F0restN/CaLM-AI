@@ -17,8 +17,9 @@ Preferences, answer tone, language, etc., are considered as short term memory.
 All memory will be generated and express as a sentences. Hence, for that sub class:
 TODO: finalize the class. Including documentation and attributes definition.
 
-NOTE: attributes should include: level (granularity), type (e.g. bio, job, social relationship, relationship with care recipient,topics if interest to
-user etc.,),content (the sentence), source (e.g. user, system, care recipient, etc.), timestamp (when the sentence is created).
+NOTE: attributes should include: level (granularity), type (e.g. bio, job, social relationship, relationship with care
+recipient,topics if interest to user etc.,),content (the sentence), source (e.g. user, system, care recipient, etc.),
+timestamp (when the sentence is created).
 
 NOTE:
 category, type, content in sentence.

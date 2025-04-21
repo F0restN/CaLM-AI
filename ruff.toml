@@ -1,6 +1,7 @@
+target-version = "py310"
+
 [lint]
 select = ["ALL"]
-
 ignore = [
     "D100",
     "D105", # Function doc for every function
@@ -14,8 +15,9 @@ ignore = [
     "FIX002",
 ]
 
-target-version = "py310"
 
+[format]
 exclude = [
     "**/test/**",
+    "*.ipynb",
 ]
