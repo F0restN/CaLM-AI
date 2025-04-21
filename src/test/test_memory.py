@@ -9,8 +9,8 @@ user_query = [
     "What are the benefits of hospice care for individuals in the advanced stages of Alzheimer's disease?",
     "How can I navigate difficult family dynamics when caring for a loved one with Alzheimer's?",
     "What are the early signs of dementia?",
-    "How does palliative care differ from hospice, and how can it help improve the quality of life for my dad with advanced dementia?"
-    "How can I ensure my loved one's safety at home, especially if they have a tendency to wander or become agitated?"
+    "How does palliative care differ from hospice, and how can it help improve the quality of life for my dad with advanced dementia?",  
+    "How can I ensure my loved one's safety at home, especially if they have a tendency to wander or become agitated?",
 ]
 
 user_profile = [

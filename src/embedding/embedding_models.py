@@ -14,4 +14,3 @@ def get_nomic_embedding() -> OllamaEmbeddings:
 
     """
     return OllamaEmbeddings(model="nomic-embed-text:latest")
-

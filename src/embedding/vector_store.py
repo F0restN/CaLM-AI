@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-from datetime import datetime
-from typing import Optional
 
 from langchain.schema import Document
 from langchain_core.embeddings import Embeddings
@@ -12,6 +10,7 @@ from classes.Memory import MemoryItem
 from embedding.embedding_models import get_nomic_embedding
 
 PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
+
 
 def get_connection(connection: str, embedding_model: Embeddings, collection_name: str) -> PGVector:
     """Get a connection to the vector store.
@@ -37,7 +36,7 @@ def get_connection(connection: str, embedding_model: Embeddings, collection_name
     )
 
 
-def similarity_search(query:str, kb:PGVector = None, k:int=10) -> list[Document]:
+def similarity_search(query: str, kb: PGVector = None, k: int = 10) -> list[Document]:
     """Search for similar documents in the vector store.
 
     Args:
@@ -56,7 +55,7 @@ def similarity_search(query:str, kb:PGVector = None, k:int=10) -> list[Document]
     return kb.similarity_search(query=query, k=k)
 
 
-def add_to_memory(memory: MemoryItem, kb:PGVector = None) -> str:
+def add_to_memory(memory: MemoryItem, kb: PGVector = None) -> str:
     """Add a memory to the vector store.
 
     Args:
@@ -83,12 +82,12 @@ def add_to_memory(memory: MemoryItem, kb:PGVector = None) -> str:
 
 
 def recall_memory(
-    query:str,
-    user_id:int,
-    score:Optional[float] = 0.2,
-    kb: Optional[PGVector] = None,
+    query: str,
+    user_id: int,
+    score: float | None = 0.2,
+    kb: PGVector | None = None,
 ) -> list[Document]:
-    """Recall the memory from the vector store.
+    """Recall the memory from the vector store. Return document above cut off score if score is provided. Otherwise return all documents using default threshold.
 
     Args:
         kb: PGVector, by default using the lstm_memory collection
@@ -106,10 +105,12 @@ def recall_memory(
             embedding_model=get_nomic_embedding(),
             collection_name="lstm_memory",
         )
-
     custom_filter = {"user_id": user_id}
-
-    return kb.similarity_search_with_score(
+    res_unfiltered: list[tuple[Document, float]] = kb.similarity_search_with_score(
         query=query,
         filter=custom_filter,
     )
+    if score is not None:
+        return [doc for doc, relevancy in res_unfiltered if relevancy >= score]
+
+    return [doc for doc, _ in res_unfiltered]

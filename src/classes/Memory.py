@@ -27,6 +27,32 @@ e.g. "The user's {job} is a {nurse}" / "[CATEGORY: {ALZ}] The user's {care recip
 level, type, source, timestamp in attributes.
 """
 
+class BaseEpisodicMemory(BaseModel):
+    """Base class for episodic memory. Core attributes included, use for AI function calling."""
+
+    topics: list[str] = Field(
+        description="3 words topics that most representative to the content of this memory, use field-specific terms like 'deep_learning', 'methodology_question', 'results_interpretation'")
+    conversation_summary: str = Field(
+        description="One sentence describing what the conversation is about and accomplished")
+    what_worked: str = Field(description="Most effective approach or strategy used in this conversation")
+    what_to_avoid: str = Field(description="Most important pitfall or ineffective approach to avoid")
+
+class EpisodicMemory(BaseEpisodicMemory):
+    """Complete episodic memory."""
+
+    episodic_id: str
+    user_id: str
+    original_conversation_id: str
+    timestamp: datetime
+    metadata: dict = Field(
+        default_factory=lambda data: {
+            "episodic_id": data["episodic_id"],
+            "user_id": data["user_id"],
+            "original_conversation_id": data["original_conversation_id"],
+            "timestamp": data["timestamp"].isoformat() if isinstance(data["timestamp"], datetime) else data["timestamp"],
+        }, description="Additional metadata about the episodic memory",
+    )
+
 
 class BaseMemory(BaseModel):
     """Basic memory attribute for AI function calling."""
@@ -36,6 +62,7 @@ class BaseMemory(BaseModel):
     category: str = Field(description="category of this memory attribute")
     type: str = Field(description="attribute name")
     topic: list[str] = Field(description="3 words topics that most representative to the content of this memory")
+
 
 class MemoryItem(BaseMemory):
     """Memory item for AI function calling."""
