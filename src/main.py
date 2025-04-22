@@ -2,7 +2,7 @@
 
 import os
 from pprint import pprint
-from typing import ClassVar, TypedDict
+from typing import TypedDict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -51,12 +51,19 @@ class GraphState(TypedDict):
 
     # Retrieval related
     retry_count: int = 0
-    retrieved_docs: ClassVar[list] = []
-    filtered_docs: ClassVar[list] = []
-    missing_topics: ClassVar[list] = []
+    retrieved_docs: list
+    filtered_docs: list
+    missing_topics: list
 
     # Decisive states
     final_answer: str | None = None
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize the state machine."""
+        super().__init__(**kwargs)
+        self.retrieved_docs = []
+        self.filtered_docs = []
+        self.missing_topics = []
 
 
 # Initialize knowledge base connections
