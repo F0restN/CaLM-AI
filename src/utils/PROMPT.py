@@ -67,7 +67,52 @@ Chat history for reference:
 """
 
 MEMORY_DETERMINATION_PROMPT_TEMPLATE = """
-You are listening and analyzing user's query to understand their current situation and facts of their life. First, you will review whether the user's query contains any information that is factual and expressed there life situation. That is to say not gonna change for a while. If there is, return "YES", otherwise return "NO". Let's think step by step.
+You are tasked with determining whether to activate a memory storage system for this conversation. Please evaluate the user's input carefully and decide whether it contains information worth storing for future reference.
+
+## Decision Criteria
+
+Analyze the user's input and respond with "YES" if ANY of the following conditions are met:
+- Contains personal information (names, preferences, circumstances, goals)
+- Describes a specific situation or context unique to the user
+- Mentions ongoing projects or tasks that may require continuity across sessions
+- Includes specific data points, facts, or figures the user might want to reference later
+- References previous conversations or establishes context that would benefit from persistence
+- Contains unique identifiers, custom terminology, or specialized knowledge domains
+- Outlines problems or challenges specific to the user's circumstances
+
+Respond with "NO" if ALL of the following conditions are met:
+- Contains only general questions about common knowledge topics
+- Requests factual information without personal context
+- Presents hypothetical scenarios without connection to the user's personal situation
+- Asks about universally applicable concepts or definitions
+- Contains no identifying information or preferences
+- Seeks general advice that isn't tailored to specific personal circumstances
+- Could be asked by anyone without changing the expected response
+
+Examples:
+User Query: I am a caregiver for my dad who has Alzheimer's disease. I am feeling very tired and stressed. What should I do?
+
+<think>
+- The user's input is about the caregiving experience, which is factual and not gonna change for a while. Therefore, I need to create a memory item.
+- The category is CARE_GIVING since the user's input is about the caregiving experience.
+- The type is CARE since the user's input is about the caregiving experience.
+- The topic is ["caregiving", "stress", "fatigue"] since the user's input is about the caregiving experience.
+</think>
+
+Output: YES
+Example:
+User Query: What is the common cause of Alzheimer's disease?
+
+<think>
+- The user's input is about the common cause of Alzheimer's disease, which is not gonna change for a while. Therefore, I need to create a memory item.
+- The category is ADRD_INFO since the user's input is about the common cause of Alzheimer's disease.
+- The type is ADRD since the user's input is about the common cause of Alzheimer's disease.
+- The topic is ["alzheimer's disease", "dementia", "common cause"] since the user's input is about the common cause of Alzheimer's disease.
+</think>
+
+Output: NO
+
+Remember that the goal is to store information that helps provide personalized, contextually relevant responses in future interactions, while avoiding unnecessary storage of generic exchanges.
 
 DO NOT include any text outside the string "YES" or "NO" in your response.
 
