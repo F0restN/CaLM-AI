@@ -1,8 +1,10 @@
 import pytest
 
-from classes.Memory import MemoryItem
+from langchain_core.messages import AIMessage
+
+from classes.Memory import MemoryItem, BaseMemory
 from embedding.vector_store import add_to_memory, recall_memory
-from memory.memory_proc import summarize_from_chat
+from memory.memory_proc import summarize_lstm_from_query, memory_extract_decision
 
 user_query = [
     "Can you recommend activities that are suitable for someone with dementia to engage in and enjoy?",
@@ -45,13 +47,23 @@ def test_construct_memory_item(user_profile):
 
 
 @pytest.mark.parametrize("user_query", user_query)
-def test_summarize_from_chat(user_query):
-    res: MemoryItem = summarize_from_chat(user_query)
+def test_memory_extract_decision(user_query):
+    res = memory_extract_decision(user_query)
     
     assert res is not None
-    assert isinstance(res, MemoryItem)
+    assert isinstance(res, AIMessage)
     
-    print("\n", res)
+    print("\n", res.content)
+   
+
+@pytest.mark.parametrize("user_query", user_query)
+def summarize_lstm_from_query(user_query):
+    res: BaseMemory = summarize_lstm_from_query(user_query)
+    
+    assert res is not None
+    assert isinstance(res, BaseMemory)
+    
+    print("\n", res.convert_to_sentence())
     
     
 @pytest.mark.parametrize("user_profile", user_profile)

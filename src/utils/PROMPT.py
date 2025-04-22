@@ -66,17 +66,73 @@ Chat history for reference:
 {chat_session}
 """
 
+MEMORY_DETERMINATION_PROMPT_TEMPLATE = """
+You are listening and analyzing user's query to understand their current situation and facts of their life. First, you will review whether the user's query contains any information that is factual and expressed there life situation. That is to say not gonna change for a while. If there is, return "YES", otherwise return "NO". Let's think step by step.
+
+DO NOT include any text outside the string "YES" or "NO" in your response.
+
+User's query:
+{query}
+"""
+
+# TODO: Evaluate the pros and cons of including this decision-making node. (Could be time-consuming)
+
+# If there isn't, return "N/A" in all fields. If there is,
 
 MEMORY_SUMMARIZATION_PROMPT = """
 You are listening and analyzing user's input to understand their current situation and facts of their life.
 
-Review the conversation and create a memory item reflection following these rules:
+DO: First, you will review whether the user's input contains any information that is factual and expressed there life situation. That is to say not gonna change for a while. Let's think step by step. If there isn't, return "N/A" in all fields. If there is, review the conversation and create a memory item reflection following these rules:
 
-1. For any fields where you don't have enough information or you're unsure about, or the field isn't relevant.
-Just use "N/A"
+Valid categories for memory items are:
+- ADRD_INFO: For information about Alzheimer's disease and related dementiacaregiving related information and key indicators
+- CARE_GIVING: For information about the caregiving experience, including the care recipient's condition, caregiving challenges, and caregiving strategies etc.
+- BIO_INFO: about the user's bio information, including the user's name, age, gender, occupation, and other bio information
+- SOCIAL_CONNECTIONS: about the user's social connections, including the user's friends, family, daily activities, routine, and other social connections
+- TOPICS_OF_INTEREST: about the user's topics of interest, including the user's hobbies, interested subjects and topics and other topics of interest.
+- PREFERENCES: about the user's preferences, including the user's preferred answer tone, language, etc.
+- OTHER: For any other categories
 
-User's input:
-{conversation}
+DO NOT include any text outside the JSON object in your response or make up assumptions.
+
+Examples:
+User Query: My dad seems forgetting things more often these days. What should I do?
+
+<think>
+- The user's input is about the care recipient's condition, which is factual and not gonna change for a while.
+- Therefore, I need to create a memory item.
+- User's father's condition is a chronic condition, so it belongs to LTM and it is about the ADRD so the category is ADRD_INFO.
+- The content of the memory item is the user's father's has cognitive impairment and appear more frequently.
+- The type of the memory item is CARE_RECIPIENT.
+- The topic of the memory item is ["alzheimer's disease", "dementia", "caregiving"].
+</think>
+
+Memory Item:
+- content: "user's dad is suffering from Alzheimer's disease."
+- level: "LTM"
+- category: "ALZ_INFO"
+- type: "care recipient condition"
+- topic: ["alzheimer's disease", "dementia", "caregiving"]
+
+
+User Query: I am a caregiver for my dad who has Alzheimer's disease. I am feeling very tired and stressed. What should I do?
+
+<think>
+- The user's input is about the caregiving experience, which is factual and not gonna change for a while. Therefore, I need to create a memory item.
+- The category is CARE_GIVING since the user's input is about the caregiving experience.
+- The type is CARE since the user's input is about the caregiving experience.
+- The topic is ["caregiving", "stress", "fatigue"] since the user's input is about the caregiving experience.
+</think>
+
+Memory Item:
+- content: "user is a caregiver for her dad who has Alzheimer's disease. She is feeling very tired and stressed."
+- level: "LTM"
+- category: "CARE_GIVING"
+- type: "emontinal state"
+- topic: ["caregiving", "stress", "burnout"]
+
+Be extremely concise - each string should be one clear, actionable sentence, Here is the user's query:
+{query}
 """
 
 

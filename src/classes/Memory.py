@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Literal
 from uuid import uuid4
 
@@ -27,6 +28,20 @@ e.g. "The user's {job} is a {nurse}" / "[CATEGORY: {ALZ}] The user's {care recip
 level, type, source, timestamp in attributes.
 """
 
+class CategoryEnum(str, Enum):
+    """Category attribute options in memory class."""
+
+    ADRD_INFO = "ADRD_INFO"
+    CARE_GIVING = "CARE_GIVING"
+    BIO_INFO = "BIO_INFO"
+    SOCIAL_CONNECTIONS = "SOCIAL_CONNECTIONS"
+    TOPICS_OF_INTEREST = "TOPICS_OF_INTEREST"
+    PREFERENCES = "PREFERENCES"
+    OTHER = "OTHER"
+
+    __slots__ = ()
+
+
 class BaseEpisodicMemory(BaseModel):
     """Base class for episodic memory. Core attributes included, use for AI function calling."""
 
@@ -36,6 +51,7 @@ class BaseEpisodicMemory(BaseModel):
         description="One sentence describing what the conversation is about and accomplished")
     what_worked: str = Field(description="Most effective approach or strategy used in this conversation")
     what_to_avoid: str = Field(description="Most important pitfall or ineffective approach to avoid")
+
 
 class EpisodicMemory(BaseEpisodicMemory):
     """Complete episodic memory."""
@@ -57,10 +73,12 @@ class EpisodicMemory(BaseEpisodicMemory):
 class BaseMemory(BaseModel):
     """Basic memory attribute for AI function calling."""
 
-    content: str = Field(description="Actual content of this memory attribute")
-    level: Literal["LTM", "STM"] = Field(description="To which level of granularity this memory attribute belongs to")
-    category: str = Field(description="category of this memory attribute")
-    type: str = Field(description="attribute name")
+    content: str = Field(
+        description="extremely concise information summarized and extracted from the user's query")
+    level: Literal["LTM", "STM"] = Field(
+        description="To which level of granularity this memory attribute belongs to, LTM stands for long-term memory, STM stands for short-term memory")
+    category: CategoryEnum = Field(description="category of this memory attribute")
+    type: str = Field(description="2 to 4 words description of this memory nature")
     topic: list[str] = Field(description="3 words topics that most representative to the content of this memory")
 
 
@@ -90,7 +108,7 @@ class MemoryItem(BaseMemory):
 
     def convert_to_sentence(self, categories: list[str] = CATEGORIES) -> str:
         """Convert the memory item to a sentence."""
-        if self.category in categories:
+        if self.category in categories and self.category != "OTHER":
             return f"[CATEGORY: {self.category}] The user's {self.type} is {self.content}"
         return f"The user's {self.type} is {self.content}"
 
