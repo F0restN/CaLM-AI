@@ -1,6 +1,8 @@
+# ruff: noqa: ANN201, SIM108
+
 import os
 from pprint import pprint
-from typing import TypedDict
+from typing import ClassVar, TypedDict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -14,6 +16,7 @@ from classes.AdaptiveDecision import AdaptiveDecision
 from classes.RequestBody import RequestBody
 from embedding.embedding_models import get_nomic_embedding
 from embedding.vector_store import get_connection
+from memory.memory_proc import format_conversation_pipeline
 from utils.logger import logger
 
 load_dotenv()
@@ -29,7 +32,8 @@ tool_call_flag = True
 
 
 class GraphState(TypedDict):
-    # Static states
+    """State machine state structure."""
+
     user_query: str
     chat_session: list
     model: str
@@ -47,9 +51,9 @@ class GraphState(TypedDict):
 
     # Retrieval related
     retry_count: int = 0
-    retrieved_docs: list = []
-    filtered_docs: list = []
-    missing_topics: list = []
+    retrieved_docs: ClassVar[list] = []
+    filtered_docs: ClassVar[list] = []
+    missing_topics: ClassVar[list] = []
 
     # Decisive states
     final_answer: str | None = None
@@ -69,8 +73,8 @@ r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedd
 # TODO: Episodic memory.
 
 
-def detect_intention(state):
-    """User intention detection node"""
+def detect_intention(state: GraphState):
+    """User intention detection node."""
     decision = adaptive_rag_decision(
         state["user_query"],
         model=state["intermediate_model"],
@@ -82,7 +86,7 @@ def detect_intention(state):
 
 
 def retrieve_documents(state: GraphState):
-    """Document retrieval node"""
+    """Retrieve documents from knowledge base."""
     if state["adaptive_decision"].knowledge_base == "peer_support":
         cls_kb = p_kb
     else:
@@ -101,7 +105,7 @@ def retrieve_documents(state: GraphState):
 
 
 async def grade_documents(state: GraphState):
-    """Document grading node"""
+    """Asynchronously grade documents."""
     graded = await grade_retrieval_batch(
         state["query_message"],
         state["retrieved_docs"],
@@ -132,7 +136,7 @@ async def grade_documents(state: GraphState):
 
 
 def expand_query(state: GraphState):
-    """Query expansion node"""
+    """Query expansion node."""
     new_query = query_extander(
         state["query_message"],
         state["missing_topics"],
@@ -147,15 +151,20 @@ def expand_query(state: GraphState):
 
 
 def generate_final_answer(state: GraphState):
-    """Final answer generation node"""
-    chat_session = state["chat_session"][-6:-
-                                         1] if len(state["chat_session"]) >= 4 else state["chat_session"]
+    """Return final answer generation node."""
+    current_chat = state["chat_session"]
+
+    work_memory = format_conversation_pipeline(
+        current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
+    )
+
+    pprint(work_memory)
 
     answer = generate_answer(
         question=state["user_query"],
         context_chunks=state["filtered_docs"] if state["filtered_docs"] else [
         ],
-        chat_session=chat_session,
+        chat_session=work_memory,
         model=state["model"],
         temperature=state["temperature"],
         isInformal=False,
@@ -164,29 +173,29 @@ def generate_final_answer(state: GraphState):
 
 
 def direct_answer(state: GraphState):
-    """Direct answer node (when retrieval not needed)"""
-    chat_session = state["chat_session"][-6:-
-                                         1] if len(state["chat_session"]) >= 4 else state["chat_session"]
+    """Direct answer node (when retrieval not needed)."""
+    current_chat = state["chat_session"]
 
-    pprint(chat_session)
+    work_memory = format_conversation_pipeline(
+        current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
+    )
+
+    pprint(work_memory)
 
     answer = generate_answer(
         question=state["user_query"],
-        chat_session=chat_session,
+        chat_session=work_memory,
         model=state["model"],
         temperature=state["temperature"],
         isInformal=True,
     )
     return {"final_answer": answer}
 
-
-def store_memory(state: GraphState):
-    """Persist memory"""
-
 # Build state machine
 
 
 def setup_workflow():
+    """Return the workflow of the Calm ADRD Agent."""
     builder = StateGraph(GraphState)
 
     # Add nodes
@@ -201,10 +210,10 @@ def setup_workflow():
     builder.set_entry_point("detect_intention")
 
     # Add conditional edges
-    def should_retrieve(state: GraphState):
+    def should_retrieve(state: GraphState) -> bool:
         return state["adaptive_decision"].require_extra_re
 
-    def should_retry(state: GraphState):
+    def should_retry(state: GraphState) -> bool:
         return (state["retry_count"] < state["max_retries"] and len(state["filtered_docs"]) < state["doc_number"])
 
     # Main process routing
@@ -243,13 +252,9 @@ calm_agent = setup_workflow()
 
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody):
-
+    """Maintain a callable API for the Calm ADRD Agent to pipeline."""
     logger.info(
         f"Processing request: {request.user_query}, for user: {request.body_config.current_session.user_id}")
-
-    # logger.info(f"==== Initial Request from Openweb-UI portal: {request.model_dump_json(indent=4)}")
-    # ls_tracing["metadata"]["session_id"] = request.body_config.current_session.chat_id
-    # ls_tracing["metadata"]["user_id"] = request.body_config.current_session.user_id
 
     initial_state = {
         **request.model_dump(),
@@ -263,10 +268,10 @@ async def calm_adrd_agent_api(request: RequestBody):
     }
 
     try:
-        async for step in calm_agent.astream(initial_state, stream_mode="values"):
+        async for _ in calm_agent.astream(initial_state, stream_mode="values"):
             continue
-        return step.get("final_answer")
-    except Exception as e:
+        return _.get("final_answer")
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Error in calm_agent stream: {e!s}")
         return {
             "answer": "Sorry, an error occurred while processing your request. Please try again later.",
@@ -277,16 +282,18 @@ async def calm_adrd_agent_api(request: RequestBody):
 
 @fastapi_app.get("/server-health-check")
 def health_check_api():
+    """Health check API."""
     return {"status": "CaLM ADRD Agent Server is Healthy"}
 
 
 def generate_graph_diagram():
+    """Generate graph diagram."""
     logger.info("Generating graph diagram")
     return calm_agent.get_graph().draw_mermaid_png(output_file_path="./public/calm_adrd_langgraph_diagram.png")
 
 
 def test(payload: RequestBody):
-
+    """Test the graph."""
     initial_state = GraphState(
         **payload.model_dump(),
         query_message=payload.user_query,
@@ -329,5 +336,3 @@ if __name__ == "__main__":
     )
 
     r = test(payload)
-
-    # print(r.model_dump_json(indent=2))
