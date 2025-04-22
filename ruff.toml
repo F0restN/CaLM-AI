@@ -1,0 +1,26 @@
+target-version = "py310"
+
+exclude = [
+    "**/test/**",
+    # "*.ipynb",
+]
+
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "D100",
+    "D105", # Function doc for every function
+    "S101",
+    "INP001", # __init__ for implicit namespace
+    "T201", # No print,
+    "E501", # Line too long
+    
+    # About TODO
+    "TD002",
+    "TD003",
+    "FIX002",
+]
+
+[format]
+docstring-code-format = true

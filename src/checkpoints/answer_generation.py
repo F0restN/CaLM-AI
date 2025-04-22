@@ -8,8 +8,8 @@ from langchain_core.messages import AIMessage
 from classes.Generation import AIGeneration, Generation
 from classes.ChatSession import ChatMessage
 from utils.logger import logger
-from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT
-from utils.llm_manager import _get_llm
+from utils.PROMPT import CLAUDE_EMOTIONAL_SUPPORT_PROMPT, BASIC_PROMPT
+from utils.llm_manager import _get_deepseek
 
 
 def generate_answer(
@@ -18,7 +18,8 @@ def generate_answer(
     chat_session: List[ChatMessage] = [],
     model: str = "llama3.2",
     temperature: float = 0,
-    tool_call_flag: bool = False,
+    tool_call_flag: bool = True,
+    isInformal: bool = False,
     langsmith_extra: dict = {}
 ) -> Generation:
     """
@@ -37,13 +38,15 @@ def generate_answer(
 
     context_page_content = "\n".join(doc.page_content for doc in context_chunks)
 
-    llm = _get_llm(model, temperature)
+    # NOTE: Generation model
+    # llm = _get_llm(model, temperature)
+    llm = _get_deepseek("deepseek-chat", temperature)
     structured_llm = None
     
     if tool_call_flag:
         prompt = PromptTemplate(
             input_variables=["context", "question", "chat_session"],
-            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT
+            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT if not isInformal else BASIC_PROMPT
         )
         structured_llm = prompt | llm.with_structured_output(schema=AIGeneration, method="function_calling", include_raw=False)
     else:
@@ -51,7 +54,7 @@ def generate_answer(
         prompt = PromptTemplate(
             input_variables=["context", "question", "chat_session"],
             partial_variables={"format_instructions": json_parser.get_format_instructions()},
-            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT + "\n\nOutput Format: {format_instructions}"
+            template=CLAUDE_EMOTIONAL_SUPPORT_PROMPT + "\n\nOutput Format: {format_instructions}" if not isInformal else BASIC_PROMPT + "\n\nOutput Format: {format_instructions}"
         )
         structured_llm = prompt | llm | json_parser
     
@@ -77,10 +80,11 @@ def generate_answer(
             {
                 "context": context_page_content,
                 "question": question,
-                "chat_session": []
-                # "chat_session": chat_session # Not for now
+                "chat_session": chat_session
             }
         )
+        
+        logger.info(f"Answer generation response: {response}")
         
         if tool_call_flag:
             response = Generation(

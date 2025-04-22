@@ -4,7 +4,6 @@ from utils.logger import logger
 from utils.llm_manager import _get_llm
 
 from langchain_core.prompts import PromptTemplate
-from langchain_core.tools import StructuredTool
 
 QUERY_EXTAND_PROMPT = """
 Exatnd the query below to get more information about the topic:
@@ -63,7 +62,7 @@ def query_extander(
         res = structured_llm.invoke({"original_query":original_query, "missing_topics":missing_topics})
         logger.success(f"Query expanded to --> {res['query']}")
         return res['query']
-    except Exception as e:
+    except Exception:
         logger.error(f"Error in query extander, for user query: {original_query}, retry with strict mode")
         return structured_llm.invoke({"original_query":original_query, "missing_topics":missing_topics}, strict=True)['query']
 
