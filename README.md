@@ -1,10 +1,17 @@
-# CaLM - Caregiving Large Language Model
 
-An intelligent RAG (Retrieval-Augmented Generation) system designed to assist caregivers of patients with Alzheimer's Disease and Related Dementias (ADRD). This system leverages local LLMs through Ollama and Langchain to provide contextual, accurate, and helpful information for family caregivers.
+![Banner](./public/banner.jpg)
 
-![Rag workflow](./public/calm-workflow.png)
+Welcome to the official repository for **CaLM-ADRD** : An intelligent Retrieval-Augmented Large Language Model System designed to assist caregivers of patients with Alzheimer's Disease and Related Dementias (ADRD). This system leverages local LLMs through Ollama and Langchain to provide contextual, accurate, and helpful information for family caregivers.
 
-## 🌟 Features
+## Table of Content
+
+1. [Features](#-features)
+2. [AI Memory](#ai-memory)
+3. [Getting Started](#-getting-started)
+4. [Installation](#installation)
+
+
+## Features
 
 ### AI Memory
 Memory are categoriezed into two level Long term memory (LTM) and short term memory (STM), Bio, job, social relationship, relationship with care recipient, topics if interest to user etc.,are considered as global level memory which is LTM and stored in the database. Preferences, answer tone, language, etc., are considered as short term memory. They will be stored in runtime variable. Some of them are loaded from disk while others are inferred from rounds of converation.

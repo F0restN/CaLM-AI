@@ -90,10 +90,10 @@ def recall_memory(
     """Recall the memory from the vector store. Return document above cut off score if score is provided. Otherwise return all documents using default threshold.
 
     Args:
-        kb: PGVector, by default using the lstm_memory collection
         query: The query to search for.
-        score: The score to search for.
         user_id: The user id to search for.
+        score: The score to search for.
+        kb: PGVector, if None provided,by default using the lstm_memory collection
 
     Returns:
         list[Document]: The list of documents found.
