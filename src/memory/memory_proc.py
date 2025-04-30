@@ -21,6 +21,27 @@ def format_conversation(chat_history: list[object]) -> str:
     return "\n".join(conversation)
 
 
+def format_conversation_pipeline(chat_history: list[object]) -> str:
+    """Format conversation into clear and concise conversation list.
+
+    Args:
+        chat_history: list[{
+            id: str
+            role: str
+            content: str
+            timestamp: str
+        }]
+
+    Returns:
+        str: formatted conversation
+
+    """
+    conversation = [
+        f"{msg['role'].upper()}: {msg['content']}" for msg in chat_history
+    ]
+    return "\n".join(conversation)
+
+
 def memory_extract_decision(query: str) -> bool:
     """Decide whether the user's query is about the life situation that is factual and not gonna change for a while."""
     llm = _get_deepseek("deepseek-chat", temperature=0.0)
