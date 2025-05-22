@@ -37,7 +37,6 @@ async def grade_retrieval(
     retrieved_doc: Document,
     model: str = "llama3.2",
     temperature: float = 0,
-    langsmith_extra: dict = {}
 ) -> AnnotatedDocumentEvl:
     """
     Grade the relevance of retrieved documents to a user question.

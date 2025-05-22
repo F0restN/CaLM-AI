@@ -1,0 +1,26 @@
+{
+    "model": "base_pipeline_scaffold",
+    "messages": [
+        {
+            "id": "c3db2446-651b-4603-b2a8-2ba558c97ff4",
+            "role": "user",
+            "content": "What are 5 creative things I could do with my kids" art? I don"t want to throw them away, but it"s also so much clutter.", "timestamp": 1738345174}, {"id": "f5ecfd01-c78a-4f2e-8495-ea0c9996a0bc", "role": "assistant", "content": "base_pipeline_scaffold response to: What are 5 creative things I could do with my kids" art? I don"t want to throw them away, but it"s also so much clutter.",
+            "timestamp": 1738345174
+        },
+        {
+            "id": "5a013a73-ff22-4e88-a69a-e09a28217331",
+            "role": "user",
+            "content": "what do you mean",
+            "timestamp": 1738345287
+        },
+        {
+            "id": "dcc67334-532e-49c7-9876-996de89ed416",
+            "role": "assistant",
+            "content": "base_pipeline_scaffold response to: what do you mean",
+            "timestamp": 1738345287
+        }
+    ],
+    "chat_id": "f1889066-82c4-4fa1-99ea-2558f3e641de",
+    "session_id": "kuZ-Qowr2GGY2FxqAADz",
+    "id": "dcc67334-532e-49c7-9876-996de89ed416"
+}

@@ -29,7 +29,6 @@ def adaptive_rag_decision(
     query: str,
     model: str = "qwen2.5-coder:7b",
     temperature: float = 0.1,
-    langsmith_extra: Optional[Dict] = None
 ) -> AdaptiveDecision:
     """
     Decide whether extra retrieval step is necessary for a given query.
@@ -38,7 +37,6 @@ def adaptive_rag_decision(
         query (str): The user's input query
         model (str, optional): The model name to use. Defaults to "qwen2.5-coder:7b"
         temperature (float, optional): The sampling temperature. Defaults to 0.1
-        langsmith_extra (Dict, optional): Extra parameters for langsmith. Defaults to None
         
     Returns:
         AdaptiveDecision: A structured decision object containing require_extra_re and knowledge_base

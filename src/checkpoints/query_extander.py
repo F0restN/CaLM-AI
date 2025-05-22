@@ -33,7 +33,6 @@ def query_extander(
     missing_topics: List[str],
     model: str = "llama3.2",
     temperature: float = 0,
-    langsmith_extra: dict = {}
 ) -> str:
     """
     Extends query by incorporating missing topics for comprehensive search.
@@ -43,7 +42,6 @@ def query_extander(
         missing_topics (List[str]): Topics missing from retrieved documents
         model (str, optional): Model name. Defaults to "llama3.2"
         temperature (float, optional): Generation temperature. Defaults to 0
-        langsmith_extra (dict, optional): Extra parameters for langsmith. Defaults to {}
         
     Returns:
         str: The extended query string
