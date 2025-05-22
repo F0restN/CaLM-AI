@@ -46,3 +46,6 @@ anaconda_*
 data/
 models/
 wandb/ 
+
+.cursorignore
+.cursorrules
