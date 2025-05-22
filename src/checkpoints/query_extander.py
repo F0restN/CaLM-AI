@@ -1,9 +1,9 @@
 from typing import List
 
+from utils.logger import logger
+from utils.llm_manager import _get_llm
+
 from langchain_core.prompts import PromptTemplate
-from langchain_core.tools import StructuredTool
-from langchain_ollama import ChatOllama
-from langsmith import traceable
 
 QUERY_EXTAND_PROMPT = """
 Exatnd the query below to get more information about the topic:
@@ -12,11 +12,22 @@ User Query: {original_query}
 
 Topics that document should cover: {missing_topics}
 
-return a string of the extended query only, do not include other supproting information.
+return a string of the extended query only, do not assume other information.
 """
 
+query_json_schema = {
+    "title": "QueryExtander",
+    "description": "The extended query string",
+    "properties": { 
+        "query": {
+            "type": "string",
+            "description": "The extended query string"
+        }
+    },
+    "required": ["query"]
+}
+    
 
-@traceable
 def query_extander(
     original_query: str,
     missing_topics: List[str],
@@ -24,13 +35,16 @@ def query_extander(
     temperature: float = 0,
 ) -> str:
     """
-    Extand the query to include missing topics.
-
+    Extends query by incorporating missing topics for comprehensive search.
+    
     Args:
-        - original_query: The original query that needs to be extanded.
-        - missing_topics: A list of topics that the query should cover.
-        - model: The model to use for the generation.
-        - temperature: The temperature to use for the generation.
+        original_query (str): User's initial query
+        missing_topics (List[str]): Topics missing from retrieved documents
+        model (str, optional): Model name. Defaults to "llama3.2"
+        temperature (float, optional): Generation temperature. Defaults to 0
+        
+    Returns:
+        str: The extended query string
     """
     
     prompt = PromptTemplate(
@@ -38,19 +52,17 @@ def query_extander(
         input_variables=["original_query", "missing_topics"]
     )
 
-    llm = ChatOllama(model=model, temperature=temperature, max_tokens=100)
+    llm = _get_llm(model, temperature)
+    
+    structured_llm = prompt | llm.with_structured_output(schema=query_json_schema, method="function_calling", include_raw=False)
 
-    chain = prompt | llm 
-
-    res = chain.invoke({"original_query":original_query, "missing_topics":missing_topics})
-
-    return res.content, res 
-
-query_extander_tool = StructuredTool.from_function(
-    func = query_extander,
-    handle_tool_error=True,
-    response_format="content_and_artifact"    
-)
+    try:
+        res = structured_llm.invoke({"original_query":original_query, "missing_topics":missing_topics})
+        logger.success(f"Query expanded to --> {res['query']}")
+        return res['query']
+    except Exception:
+        logger.error(f"Error in query extander, for user query: {original_query}, retry with strict mode")
+        return structured_llm.invoke({"original_query":original_query, "missing_topics":missing_topics}, strict=True)['query']
 
 if __name__ == "__main__":
     original_query = "What is the capital of France?"
@@ -62,7 +74,7 @@ if __name__ == "__main__":
     # })
     
     res = query_extander(
-        original_query, missing_topics, model="deepseek-r1:14b"
+        original_query, missing_topics, model="qwen2.5"
     )
 
     print(res)

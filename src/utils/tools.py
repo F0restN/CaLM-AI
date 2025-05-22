@@ -1,6 +1,5 @@
 from typing import List, Optional
 from langchain_core.documents import Document
-from .logger import logger
 
 
 class ToolKits:
