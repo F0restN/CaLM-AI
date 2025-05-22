@@ -1,7 +1,6 @@
 # ruff: noqa: ANN201, SIM108
 
 import os
-from pprint import pprint
 from typing import TypedDict
 
 from dotenv import load_dotenv
@@ -13,8 +12,8 @@ from checkpoints.answer_generation import generate_answer
 from checkpoints.query_extander import query_extander
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
-from classes.RequestBody import RequestBody
 from classes.ChatSession import BaseChatMessage
+from classes.RequestBody import RequestBody
 from embedding.embedding_models import get_nomic_embedding
 from embedding.vector_store import get_connection
 from memory.memory_proc import format_conversation_pipeline
@@ -80,9 +79,8 @@ r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedd
 
 def detect_intention(state: GraphState):
     """User intention detection node."""
-    
     logger.info(f"state['user_query']: {state['user_query']}")
-    
+
     decision = adaptive_rag_decision(
         state["user_query"],
         model=state["intermediate_model"],
@@ -114,7 +112,7 @@ def retrieve_documents(state: GraphState):
 async def grade_documents(state: GraphState):
     """Asynchronously grade documents."""
     graded = await grade_retrieval_batch(
-        state["query_message"], # type: ignore
+        state["query_message"],
         state["retrieved_docs"],
         model=state["intermediate_model"],
         temperature=state["temperature"],
@@ -143,7 +141,6 @@ async def grade_documents(state: GraphState):
 
 def expand_query(state: GraphState):
     """Query expansion node."""
-    
     new_query = query_extander(
         state["query_message"],
         state["missing_topics"],
@@ -158,9 +155,7 @@ def expand_query(state: GraphState):
 
 def generate_final_answer(state: GraphState):
     """Return final answer generation node."""
-
-    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]] # type: ignore
-
+    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]]
     work_memory = format_conversation_pipeline(
         current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
     )
@@ -178,8 +173,7 @@ def generate_final_answer(state: GraphState):
 
 def direct_answer(state: GraphState):
     """Direct answer node (when retrieval not needed)."""
-
-    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]] # type: ignore
+    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]]
 
     work_memory = format_conversation_pipeline(
         current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
@@ -256,7 +250,6 @@ calm_agent = setup_workflow()
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody):
     """Maintain a callable API for the Calm ADRD Agent to pipeline."""
-    
     logger.info(f"request: {request}")
 
     initial_state = {
@@ -297,7 +290,7 @@ async def calm_adrd_agent_api(request: RequestBody):
             "sources": [],
             "follow_up_questions": [],
         }
-    
+
     return "Hello"
 
 
