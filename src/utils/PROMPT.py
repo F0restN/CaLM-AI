@@ -48,7 +48,7 @@ Below is relevant information to guide your response:
 {context}
 
 Chat history for reference:
-{chat_session}
+{work_memory}
 """
 
 
@@ -63,14 +63,11 @@ Question:
 
 Take user's Long-term memory into consideration, and make sure your response is consistent with the long-term memory.
 
-Long-term memory:
-{ltm_context}
-
 Chat history for reference and use it to guide your response:
-{conversation_history}
+{work_memory}
 
 This is what your remembered in current conversation with user, use it to guide your response:
-{stm_context}
+{context}
 """
 
 MEMORY_DETERMINATION_PROMPT_TEMPLATE = """

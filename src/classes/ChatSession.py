@@ -3,11 +3,13 @@ from typing import List, Literal
 
 # id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
-class ChatMessage(BaseModel):
-    id: str = None
-    role: Literal["user", "assistant", "system"] = None
-    content: str = None
-    timestamp: int = None
+class BaseChatMessage(BaseModel):
+    role: str
+    content: str
+    
+class ChatMessage(BaseChatMessage):
+    id: str
+    timestamp: int
 
 class ChatSession(BaseModel):
     model: str
@@ -15,9 +17,3 @@ class ChatSession(BaseModel):
     chat_id: str
     session_id: str
     id: str
-
-    # class Config:
-    #     validate_assignment = True
-    #     json_encoders = {
-    #         uuid.UUID: lambda v: str(v)
-    #     }

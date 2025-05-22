@@ -34,7 +34,6 @@ def test_detect_intention(question):
         "user_query": question,
         "intermediate_model": "qwen2.5-coder:7b",
         "temperature": 0.3,
-        "langsmith_extra": None
     }
     
     res = detect_intention(state)['adaptive_decision']
@@ -55,7 +54,6 @@ def test_similarity_search(question):
         "user_query": question,
         "intermediate_model": "qwen2.5-coder:7b",
         "temperature": 0.3,
-        "langsmith_extra": None,
         # for retrieval
         "adaptive_decision": None,
         "query_message": question,
