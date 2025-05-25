@@ -1,32 +1,29 @@
-from typing import List, Optional
-from langchain_core.documents import Document
+import os
+
+from langchain_core.embeddings import Embeddings
+from langchain_postgres import PGVector
+
+from utils.Models import get_nomic_embedding
 
 
-class ToolKits:
-    def __init__(self):
-        pass
+def get_connection(connection: str, embedding_model: Embeddings, collection_name: str) -> PGVector:
+    """Get the PGVector connection.
 
-    def straight_array_to_string(self, array: list, separator: str = ",") -> str:
-        if not array:
-            return "NAN"
-        return separator.join(array)
+    Args:
+        connection: The connection string for the vector store.
+        embedding_model: The embedding model to use.
+        collection_name: The name of the collection to use.
 
+    Returns:
+        PGVector: The vector store connection.
 
-def pretty_print_list_docs(docs: List[Optional[Document]], properties: List[str] = None):
-    for i, doc in enumerate(docs):
-        print(
-            f"------------------------------------- || Document #{i+1} || -------------------------------------")
-
-        if not properties:
-            print(f"Document: {doc.page_content} \n")
-            print(f"Metadata: {doc.metadata} \n")
-
-        if properties:
-            for prop in properties:
-                print(f"{prop}: {doc[prop]} \n")
-
-
-if __name__ == "__main__":
-    tools = ToolKits()
-    print(tools.straight_array_to_string([]))
-    print(pretty_print_list_docs([], []))
+    """
+    if not connection:
+        connection = os.environ.get("PGVECTOR_CONN")
+    if not embedding_model:
+        embedding_model = get_nomic_embedding()
+    return PGVector(
+        embeddings=embedding_model,
+        connection=connection,
+        collection_name=collection_name,
+    )

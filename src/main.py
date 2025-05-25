@@ -17,7 +17,7 @@ from classes.AdaptiveDecision import AdaptiveDecision
 from classes.ChatSession import BaseChatMessage, ChatSessionFactory
 from classes.Generation import Generation
 from classes.RequestBody import RequestBody
-from embedding.vector_store import get_connection
+from classes.VectorStore import VectorStore
 from utils.logger import logger
 from utils.Models import get_nomic_embedding
 
@@ -64,12 +64,8 @@ class GraphState(BaseModel):
 
 
 # Initialize knowledge base connections
-PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
-
-assert PGVECTOR_CONN is not None, "PGVECTOR_CONN is not set"
-
-p_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(), collection_name="peer_support_kb")
-r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(), collection_name="research_kb")
+p_kb = VectorStore(collection_name="peer_support_kb")
+r_kb = VectorStore(collection_name="research_kb")
 
 def detect_intention(state: GraphState) -> dict:
     """User intention detection node. Determine whether to use extra knowledge about ADRD."""
@@ -91,7 +87,7 @@ def retrieve_documents(state: GraphState) -> dict:
     else:
         cls_kb = r_kb
 
-    docs = cls_kb.similarity_search(state.query_message, k=state.doc_number, search_type="hybrid")
+    docs = cls_kb.similarity_search(state.query_message, k=state.doc_number)
 
     logger.success(f"Similarity search retrieved | {len(docs)} | documents")
 
