@@ -6,9 +6,6 @@ from langchain.schema import Document
 from langchain_core.embeddings import Embeddings
 from langchain_postgres import PGVector
 
-from classes.Memory import MemoryItem
-from embedding.embedding_models import get_nomic_embedding
-
 PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
 
 

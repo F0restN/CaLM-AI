@@ -9,12 +9,15 @@ exclude = [
 [lint]
 select = ["ALL"]
 ignore = [
+    # Must have
     "D100",
+    "D401", # First line should be in imperative mood
     "D105", # Function doc for every function
     "S101",
     "INP001", # __init__ for implicit namespace
     "T201", # No print,
     "E501", # Line too long
+    "EXE002", # Use explicit exception handling
     
     # About TODO
     "TD002",
@@ -22,7 +25,12 @@ ignore = [
     "FIX002",
 
     # Errors
-    "BLE001"
+    "BLE001",
+
+    # Optional
+    "N803", # Lower case parameter name
+    "EM101",
+    "TRY003",
 ]
 
 [format]

@@ -1,7 +1,7 @@
 from typing import List
 
 from utils.logger import logger
-from utils.llm_manager import _get_llm
+from utils.Models import _get_llm
 
 from langchain_core.prompts import PromptTemplate
 

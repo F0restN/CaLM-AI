@@ -1,7 +1,7 @@
 import asyncio
 import pprint
 
-from src.main import GraphState, calm_agent
+from main import GraphState, calm_agent
 
 
 async def test_basic_workflow():
@@ -30,7 +30,7 @@ async def test_basic_workflow():
             final_state = state_update
 
         print("✅ Workflow completed successfully!")
-        pprint.pprint(f"Final answer: {final_state.get('final_answer', 'No answer generated')}", depth=1)
+        print(f"Final answer: {final_state}")
 
         return final_state
 

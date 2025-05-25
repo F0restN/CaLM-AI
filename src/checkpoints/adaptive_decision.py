@@ -4,7 +4,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.exceptions import OutputParserException
 
 from utils.logger import logger
-from utils.llm_manager import _get_llm
+from utils.Models import _get_llm
 from classes.AdaptiveDecision import AdaptiveDecision
 
 

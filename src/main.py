@@ -6,6 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from langgraph.graph import END, StateGraph
+from langgraph.pregel.io import AddableValuesDict
 from pydantic import BaseModel, Field
 
 from checkpoints.adaptive_decision import adaptive_rag_decision
@@ -13,12 +14,12 @@ from checkpoints.answer_generation import generate_answer
 from checkpoints.query_extander import query_extander
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
-from classes.ChatSession import BaseChatMessage
+from classes.ChatSession import BaseChatMessage, ChatSessionFactory
+from classes.Generation import Generation
 from classes.RequestBody import RequestBody
-from embedding.embedding_models import get_nomic_embedding
 from embedding.vector_store import get_connection
-from memory.memory_proc import format_conversation_pipeline
 from utils.logger import logger
+from utils.Models import get_nomic_embedding
 
 load_dotenv()
 
@@ -43,7 +44,7 @@ class GraphState(BaseModel):
 
     # Running states
     query_message: str = Field(default="", description="Current query message, original from user query modified by query expansion")
-    final_answer: str = Field(default="", description="Final generated answer")
+    final_answer: Generation | None = Field(default=None, description="Final generated answer")
     retrieved_docs: list = Field(default_factory=list, description="Retrieved documents")
     filtered_docs: list = Field(default_factory=list, description="Filtered documents")
     missing_topics: list = Field(default_factory=list, description="Missing topics for query expansion")
@@ -145,9 +146,10 @@ def expand_query(state: GraphState) -> dict:
 
 def generate_answer_unified(state: GraphState) -> dict:
     """Unified answer generation node - handles both direct and retrieval-based responses."""
-    work_memory = format_conversation_pipeline(
-        state.chat_session[-6:-1] if len(state.chat_session) >= 4 else state.chat_session,
-    )
+    work_memory = ChatSessionFactory(
+        messages=state.chat_session,
+        max_messages=6,
+    ).get_formatted_conversation()
 
     # Determine if we have retrieved documents (RAG mode vs direct mode)
     has_context = state.filtered_docs and len(state.filtered_docs) > 0
@@ -191,7 +193,7 @@ def setup_workflow():
         return state.adaptive_decision is not None and state.adaptive_decision.require_extra_re
 
     def should_retry(state: GraphState) -> bool:
-        return (state.retry_count < state.max_retries and 
+        return (state.retry_count < state.max_retries and
                 len(state.filtered_docs) < state.doc_number)
 
     # Main process routing - both paths now go to the same unified answer node
@@ -228,7 +230,7 @@ calm_agent = setup_workflow()
 
 
 @fastapi_app.post("/ask-calm-adrd-agent")
-async def calm_adrd_agent_api(request: RequestBody):
+async def calm_adrd_agent_api(request: RequestBody) -> Generation:
     """Maintain a callable API for the Calm ADRD Agent to pipeline."""
     logger.info(f"request: {request}")
 
@@ -247,13 +249,15 @@ async def calm_adrd_agent_api(request: RequestBody):
 
     try:
         # Convert Pydantic model to dict for graph execution
-        final_state = None
+        final_state: AddableValuesDict | None = None
         async for state_update in calm_agent.astream(initial_state.model_dump(), stream_mode="values"):
             final_state = state_update
 
+        logger.info(f"Final state: {final_state}")
+
         # Make sure final_answer is not empty
         assert final_state is not None, "Final state is None"
-        assert final_state.final_answer, "Final answer is empty"
+        assert final_state.get("final_answer"), "Final answer is empty"
 
         return final_state.get("final_answer", "")
     except AssertionError as e:
