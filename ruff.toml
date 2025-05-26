@@ -9,7 +9,7 @@ exclude = [
 [lint]
 select = ["ALL"]
 ignore = [
-    # Must have
+    # -- Must have --
     "D100",
     "D401", # First line should be in imperative mood
     "D105", # Function doc for every function
@@ -26,11 +26,14 @@ ignore = [
 
     # Errors
     "BLE001",
+    "EM102", # Use error msg string not variable
 
-    # Optional
+    # -- Optional --
     "N803", # Lower case parameter name
     "EM101",
     "TRY003",
+    "PLR2004", # Use variable as parameter not constant
+    "D106", # Docstring is missing
 ]
 
 [format]

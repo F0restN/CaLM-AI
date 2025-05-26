@@ -1,6 +1,5 @@
 # ruff: noqa: ANN201, SIM108
 
-import os
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -19,7 +18,6 @@ from classes.Generation import Generation
 from classes.RequestBody import RequestBody
 from classes.VectorStore import VectorStore
 from utils.logger import logger
-from utils.Models import get_nomic_embedding
 
 load_dotenv()
 
@@ -32,7 +30,7 @@ class GraphState(BaseModel):
 
     # Runtime Input parameters
     user_query: str = Field(..., description="User's input query")
-    chat_session: list[BaseChatMessage] = Field(default_factory=list, description="Chat session history, used for work memory")
+    # chat_session: list[BaseChatMessage] = Field(default_factory=list, description="Chat session history, used for work memory")
 
     # Hyperparameters
     model: str = Field(default="deepseek-v3", description="LLM model to use for answer generation")
@@ -48,6 +46,7 @@ class GraphState(BaseModel):
     retrieved_docs: list = Field(default_factory=list, description="Retrieved documents")
     filtered_docs: list = Field(default_factory=list, description="Filtered documents")
     missing_topics: list = Field(default_factory=list, description="Missing topics for query expansion")
+    chat_session: ChatSessionFactory = Field(description="Maintaining the conversation history in current session")
 
     # Routing function
     adaptive_decision: Optional[AdaptiveDecision] = Field(default=None, description="Adaptive decision result, whether to use extra knowledge about ADRD. Determined by user's query")  # noqa: UP007
@@ -72,9 +71,10 @@ def detect_intention(state: GraphState) -> dict:
     logger.info(f"User's query: {state.user_query}")
 
     decision = adaptive_rag_decision(
-        state.user_query,
+        query=state.user_query,
         model=state.intermediate_model,
         temperature=state.temperature,
+        latest_conversation_pair=state.chat_session.get_formatted_conversation("latest_conversation_pair"),
     )
 
     return {"adaptive_decision": decision}
@@ -142,11 +142,6 @@ def expand_query(state: GraphState) -> dict:
 
 def generate_answer_unified(state: GraphState) -> dict:
     """Unified answer generation node - handles both direct and retrieval-based responses."""
-    work_memory = ChatSessionFactory(
-        messages=state.chat_session,
-        max_messages=6,
-    ).get_formatted_conversation()
-
     # Determine if we have retrieved documents (RAG mode vs direct mode)
     has_context = state.filtered_docs and len(state.filtered_docs) > 0
 
@@ -159,7 +154,7 @@ def generate_answer_unified(state: GraphState) -> dict:
     answer = generate_answer(
         question=state.user_query,
         context_chunks=context_chunks,
-        work_memory=work_memory,
+        work_memory=state.chat_session.get_formatted_conversation("messages"),
         temperature=state.temperature,
         isInformal=is_informal,
     )
@@ -233,7 +228,6 @@ async def calm_adrd_agent_api(request: RequestBody) -> Generation:
     # Create initial state using Pydantic model
     initial_state = GraphState(
         user_query=request.user_query,
-        chat_session=request.chat_session,
         model=request.model,
         intermediate_model=request.intermediate_model,
         threshold=request.threshold,
@@ -241,6 +235,10 @@ async def calm_adrd_agent_api(request: RequestBody) -> Generation:
         doc_number=request.doc_number,
         temperature=request.temperature,
         query_message=request.user_query,  # Initialize query_message with user_query
+        chat_session=ChatSessionFactory(
+            messages=request.chat_session,
+            max_messages=6,
+        ),
     )
 
     try:

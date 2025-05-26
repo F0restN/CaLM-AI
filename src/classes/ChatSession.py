@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -65,10 +66,40 @@ class ChatSessionFactory:
             cls._messages = cls._messages[-cls._max_messages:]
         return cls._messages
 
-    def get_formatted_conversation(self) -> str:
+    def get_latest_user_message(self) -> BaseChatMessage:
+        """Get the latest user message."""
+        for message in reversed(self._messages):
+            if message.role == MessageRole.USER:
+                return message
+        return None
+
+    def get_latest_assistant_message(self) -> BaseChatMessage:
+        """Get the latest assistant message."""
+        for message in reversed(self._messages):
+            if message.role == MessageRole.ASSISTANT:
+                return message
+        return None
+
+    def get_latest_conversation_pair(self) -> tuple[BaseChatMessage, BaseChatMessage]:
+        """Get the latest conversation in sequence. Must start with a user message and followed by an assistant message."""
+        user_message = self.get_latest_user_message()
+        assistant_message = self.get_latest_assistant_message()
+        if user_message and assistant_message:
+            return user_message, assistant_message
+        return None
+
+    def get_formatted_conversation(self, attriute: Literal["messages", "latest_conversation_pair"] = "messages") -> str:
         """Get formatted conversation using the current formatter."""
-        return self._formatter.format(self._messages)
+        if attriute == "messages":
+            return self._formatter.format(self._messages)
+        if attriute == "latest_conversation_pair":
+            return self._formatter.format(self.get_latest_conversation_pair())
+        raise ValueError(f"Invalid attribute: {attriute}")
 
     def set_formatter(self, formatter: MessageFormatter) -> None:
         """Set a new formatting strategy."""
         self._formatter = formatter
+
+    def __str__(self) -> str:
+        """Get formatted conversation using the current formatter."""
+        return self.get_formatted_conversation("messages")
