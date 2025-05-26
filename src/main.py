@@ -1,137 +1,124 @@
 # ruff: noqa: ANN201, SIM108
 
-import os
-from typing import TypedDict
+from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from langgraph.graph import END, StateGraph
+from langgraph.pregel.io import AddableValuesDict
+from pydantic import BaseModel, Field
 
 from checkpoints.adaptive_decision import adaptive_rag_decision
 from checkpoints.answer_generation import generate_answer
 from checkpoints.query_extander import query_extander
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
-from classes.ChatSession import BaseChatMessage
+from classes.ChatSession import BaseChatMessage, ChatSessionFactory
+from classes.Generation import Generation
 from classes.RequestBody import RequestBody
-from embedding.embedding_models import get_nomic_embedding
-from embedding.vector_store import get_connection
-from memory.memory_proc import format_conversation_pipeline
+from classes.VectorStore import VectorStore
 from utils.logger import logger
 
 load_dotenv()
 
 fastapi_app = FastAPI()
 
-# Define state machine state structure
+# Define state machine state structure using Pydantic BaseModel
 
-class GraphState(TypedDict):
-    """State machine state structure."""
+class GraphState(BaseModel):
+    """State machine state structure using Pydantic BaseModel contains necessary fields for CaLM AI ADRD Agent."""
 
-    user_query: str
-    chat_session: list[BaseChatMessage]
-    model: str
-    intermediate_model: str
-    threshold: float
-    max_retries: int
-    doc_number: int
-    temperature: float
+    # Runtime Input parameters
+    user_query: str = Field(..., description="User's input query")
+    # chat_session: list[BaseChatMessage] = Field(default_factory=list, description="Chat session history, used for work memory")
+
+    # Hyperparameters
+    model: str = Field(default="deepseek-v3", description="LLM model to use for answer generation")
+    intermediate_model: str = Field(default="qwen2.5:14b", description="Intermediate model for auxilary tasks, such as query expansion, document grading, etc.")
+    threshold: float = Field(default=0.6, ge=0.0, le=1.0, description="Relevance threshold")
+    max_retries: int = Field(default=3, ge=1, description="Maximum retry attempts")
+    doc_number: int = Field(default=5, ge=1, description="Number of documents to retrieve")
+    temperature: float = Field(default=0.3, ge=0.0, le=1.0, description="Model temperature")
 
     # Running states
-    query_message: str
+    query_message: str = Field(default="", description="Current query message, original from user query modified by query expansion")
+    final_answer: Generation | None = Field(default=None, description="Final generated answer")
+    retrieved_docs: list = Field(default_factory=list, description="Retrieved documents")
+    filtered_docs: list = Field(default_factory=list, description="Filtered documents")
+    missing_topics: list = Field(default_factory=list, description="Missing topics for query expansion")
+    chat_session: ChatSessionFactory = Field(description="Maintaining the conversation history in current session")
 
     # Routing function
-    adaptive_decision: AdaptiveDecision | None
+    adaptive_decision: Optional[AdaptiveDecision] = Field(default=None, description="Adaptive decision result, whether to use extra knowledge about ADRD. Determined by user's query")  # noqa: UP007
+    retry_count: int = Field(default=0, ge=0, description="Current retry count")
 
-    # Retrieval related
-    retry_count: int
-    retrieved_docs: list
-    filtered_docs: list
-    missing_topics: list
+    class Config:
+        """Pydantic BaseModel Config."""
 
-    # Decisive states
-    final_answer: str
-
-    def __init__(self, **kwargs: dict) -> None:
-        """Initialize the state machine."""
-        super().__init__(**kwargs)
-        self.retrieved_docs = []
-        self.filtered_docs = []
-        self.missing_topics = []
+        # Allow mutation for state updates
+        validate_assignment = True
+        arbitrary_types_allowed = True
+        # Allow extra fields that might be added dynamically
+        extra = "allow"
 
 
 # Initialize knowledge base connections
-PGVECTOR_CONN = os.environ.get("PGVECTOR_CONN")
+p_kb = VectorStore(collection_name="peer_support_kb")
+r_kb = VectorStore(collection_name="research_kb")
 
-assert PGVECTOR_CONN is not None, "PGVECTOR_CONN is not set"
-
-p_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(
-), collection_name="peer_support_kb")
-r_kb = get_connection(connection=PGVECTOR_CONN, embedding_model=get_nomic_embedding(
-), collection_name="research_kb")
-
-# TODO: Memory procedures - Recall user relevant memories from LTM.
-
-# TODO: Memory - summarize user's memories.
-
-# TODO: Episodic memory.
-
-
-def detect_intention(state: GraphState):
-    """User intention detection node."""
-    logger.info(f"state['user_query']: {state['user_query']}")
+def detect_intention(state: GraphState) -> dict:
+    """User intention detection node. Determine whether to use extra knowledge about ADRD."""
+    logger.info(f"User's query: {state.user_query}")
 
     decision = adaptive_rag_decision(
-        state["user_query"],
-        model=state["intermediate_model"],
-        temperature=state["temperature"],
+        query=state.user_query,
+        model=state.intermediate_model,
+        temperature=state.temperature,
+        latest_conversation_pair=state.chat_session.get_formatted_conversation("latest_conversation_pair"),
     )
 
     return {"adaptive_decision": decision}
 
 
-def retrieve_documents(state: GraphState):
+def retrieve_documents(state: GraphState) -> dict:
     """Retrieve documents from knowledge base."""
-    if state["adaptive_decision"] and state["adaptive_decision"].knowledge_base == "peer_support":
+    if state.adaptive_decision and state.adaptive_decision.knowledge_base == "peer_support":
         cls_kb = p_kb
     else:
         cls_kb = r_kb
 
-    # TODO: Try to use Hybrid Search
-    docs = cls_kb.similarity_search(
-        state["query_message"], k=state["doc_number"], search_type="hybrid")
+    docs = cls_kb.similarity_search(state.query_message, k=state.doc_number)
 
     logger.success(f"Similarity search retrieved | {len(docs)} | documents")
 
     return {
         "retrieved_docs": docs,
-        "retry_count": state["retry_count"] + 1,
+        "retry_count": state.retry_count + 1,
     }
 
 
-async def grade_documents(state: GraphState):
-    """Asynchronously grade documents."""
+async def grade_documents(state: GraphState) -> dict:
+    """Asynchronously grade documents. Filter out irrelevant documents and identify missing topics for query expansion."""
     graded = await grade_retrieval_batch(
-        state["query_message"],
-        state["retrieved_docs"],
-        model=state["intermediate_model"],
-        temperature=state["temperature"],
+        state.query_message,
+        state.retrieved_docs,
+        model=state.intermediate_model,
+        temperature=state.temperature,
     )
 
-    filtered = state["filtered_docs"]
+    filtered = state.filtered_docs.copy() if state.filtered_docs else []
     missing = []
     for doc in graded:
-        if doc.relevance_score >= state["threshold"]:
-
+        if doc.relevance_score >= state.threshold:
             # Remove duplicates
             if doc not in filtered:
                 filtered.append(doc)
-
         else:
             missing.extend(doc.missing_topics)
 
     logger.success(
-        f"Filtered in {len(filtered)} documents, out of {len(graded)} graded documents")
+        f"Filtered in {len(filtered)} documents, out of {len(graded)} graded documents",
+    )
 
     return {
         "filtered_docs": sorted(filtered, key=lambda x: x.relevance_score, reverse=True),
@@ -139,13 +126,13 @@ async def grade_documents(state: GraphState):
     }
 
 
-def expand_query(state: GraphState):
+def expand_query(state: GraphState) -> dict:
     """Query expansion node."""
     new_query = query_extander(
-        state["query_message"],
-        state["missing_topics"],
-        model=state["intermediate_model"],
-        temperature=state["temperature"],
+        state.query_message,
+        state.missing_topics,
+        model=state.intermediate_model,
+        temperature=state.temperature,
     )
 
     return {
@@ -153,40 +140,27 @@ def expand_query(state: GraphState):
     }
 
 
-def generate_final_answer(state: GraphState):
-    """Return final answer generation node."""
-    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]]
-    work_memory = format_conversation_pipeline(
-        current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
-    )
+def generate_answer_unified(state: GraphState) -> dict:
+    """Unified answer generation node - handles both direct and retrieval-based responses."""
+    # Determine if we have retrieved documents (RAG mode vs direct mode)
+    has_context = state.filtered_docs and len(state.filtered_docs) > 0
+
+    # Use retrieved documents if available, otherwise empty list
+    context_chunks = state.filtered_docs if has_context else []
+
+    # Set informal tone for direct answers (no retrieval), formal for RAG answers
+    is_informal = not has_context
 
     answer = generate_answer(
-        question=state["user_query"],
-        context_chunks=state["filtered_docs"] if state["filtered_docs"] else [
-        ],
-        work_memory=work_memory,
-        temperature=state["temperature"],
-        isInformal=False,
+        question=state.user_query,
+        context_chunks=context_chunks,
+        work_memory=state.chat_session.get_formatted_conversation("messages"),
+        temperature=state.temperature,
+        isInformal=is_informal,
     )
+
     return {"final_answer": answer}
 
-
-def direct_answer(state: GraphState):
-    """Direct answer node (when retrieval not needed)."""
-    current_chat = [BaseChatMessage(**chat) for chat in state["chat_session"]]
-
-    work_memory = format_conversation_pipeline(
-        current_chat[-6:-1] if len(current_chat) >= 4 else current_chat,
-    )
-
-    answer = generate_answer(
-        question=state["user_query"],
-        context_chunks=[],
-        work_memory=work_memory,
-        temperature=state["temperature"],
-        isInformal=True,
-    )
-    return {"final_answer": answer}
 
 # Build state machine
 
@@ -200,26 +174,26 @@ def setup_workflow():
     builder.add_node("retrieve_docs", retrieve_documents)
     builder.add_node("grade_docs", grade_documents)
     builder.add_node("expand_query", expand_query)
-    builder.add_node("generate_answer", generate_final_answer)
-    builder.add_node("direct_answer", direct_answer)
+    builder.add_node("generate_answer", generate_answer_unified)  # Single unified node
 
     # Set entry point
     builder.set_entry_point("detect_intention")
 
     # Add conditional edges
     def should_retrieve(state: GraphState) -> bool:
-        return state["adaptive_decision"].require_extra_re
+        return state.adaptive_decision is not None and state.adaptive_decision.require_extra_re
 
     def should_retry(state: GraphState) -> bool:
-        return (state["retry_count"] < state["max_retries"] and len(state["filtered_docs"]) < state["doc_number"])
+        return (state.retry_count < state.max_retries and
+                len(state.filtered_docs) < state.doc_number)
 
-    # Main process routing
+    # Main process routing - both paths now go to the same unified answer node
     builder.add_conditional_edges(
         "detect_intention",
         should_retrieve,
         {
             True: "retrieve_docs",
-            False: "direct_answer",
+            False: "generate_answer",  # Direct to unified answer node
         },
     )
 
@@ -230,13 +204,12 @@ def setup_workflow():
         should_retry,
         {
             True: "expand_query",
-            False: "generate_answer",
+            False: "generate_answer",  # Same unified answer node
         },
     )
     builder.add_edge("expand_query", "retrieve_docs")
 
-    # End nodes
-    builder.add_edge("direct_answer", END)
+    # End node - only one path now
     builder.add_edge("generate_answer", END)
 
     return builder.compile()
@@ -248,50 +221,53 @@ calm_agent = setup_workflow()
 
 
 @fastapi_app.post("/ask-calm-adrd-agent")
-async def calm_adrd_agent_api(request: RequestBody):
+async def calm_adrd_agent_api(request: RequestBody) -> Generation:
     """Maintain a callable API for the Calm ADRD Agent to pipeline."""
     logger.info(f"request: {request}")
 
-    initial_state = {
-        "user_query": request.user_query,
-        "chat_session": request.chat_session,
-        "model": request.model,
-        "intermediate_model": request.intermediate_model,
-        "threshold": request.threshold,
-        "max_retries": request.max_retries,
-        "doc_number": request.doc_number,
-        "temperature": request.temperature,
-
-        # Running states
-        "query_message": request.user_query,
-
-        # Routing function
-        "adaptive_decision": None,
-
-        # Retrieval related
-        "retry_count": 0,
-        "retrieved_docs": [],
-        "filtered_docs": [],
-        "missing_topics": [],
-
-        # Decisive states
-        "final_answer": "",
-        **request.model_dump(),
-    }
+    # Create initial state using Pydantic model
+    initial_state = GraphState(
+        user_query=request.user_query,
+        model=request.model,
+        intermediate_model=request.intermediate_model,
+        threshold=request.threshold,
+        max_retries=request.max_retries,
+        doc_number=request.doc_number,
+        temperature=request.temperature,
+        query_message=request.user_query,  # Initialize query_message with user_query
+        chat_session=ChatSessionFactory(
+            messages=request.chat_session,
+            max_messages=6,
+        ),
+    )
 
     try:
-        async for _ in calm_agent.astream(initial_state, stream_mode="values"):
-            continue
-        return _.get("final_answer")
-    except Exception as e:  # noqa: BLE001
-        logger.error(f"Error in calm_agent stream: {e!s}")
+        # Convert Pydantic model to dict for graph execution
+        final_state: AddableValuesDict | None = None
+        async for state_update in calm_agent.astream(initial_state.model_dump(), stream_mode="values"):
+            final_state = state_update
+
+        logger.info(f"Final state: {final_state}")
+
+        # Make sure final_answer is not empty
+        assert final_state is not None, "Final state is None"
+        assert final_state.get("final_answer"), "Final answer is empty"
+
+        return final_state.get("final_answer", "")
+    except AssertionError as e:
+        logger.error(f"Assertion error in calm_agent stream: {e!s}")
         return {
-            "answer": "Sorry, an error occurred while processing your request. Please try again later.",
+            "answer": f"Sorry, an error occurred while processing your request. Please try again later.{e}",
             "sources": [],
             "follow_up_questions": [],
         }
-
-    return "Hello"
+    except Exception as e:
+        logger.error(f"Error in calm_agent stream: {e!s}")
+        return {
+            "answer": f"Sorry, an error occurred while processing your request. Please try again later.{e}",
+            "sources": [],
+            "follow_up_questions": [],
+        }
 
 
 @fastapi_app.get("/server-health-check")
@@ -305,3 +281,5 @@ def generate_graph_diagram():
     logger.info("Generating graph diagram")
     return calm_agent.get_graph().draw_mermaid_png(output_file_path="./public/calm_adrd_langgraph_diagram.png")
 
+if __name__ == "__main__":
+    generate_graph_diagram()

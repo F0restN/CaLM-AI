@@ -1,20 +1,18 @@
-
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage
 from langchain_core.prompts import PromptTemplate
 
-from classes.ChatSession import ChatMessage
 from classes.Generation import AIGeneration, Generation
-from utils.llm_manager import _get_deepseek
 from utils.logger import logger
+from utils.Models import _get_deepseek
 from utils.PROMPT import BASIC_PROMPT, CLAUDE_EMOTIONAL_SUPPORT_PROMPT
 
 
 def generate_answer(
     question: str,
-    context_chunks: list[Document] = [],
+    context_chunks: list[Document] | None = None,
     work_memory: str = "",
     temperature: float = 0,
+    *,
     isInformal: bool = False,
 ) -> Generation:
     """Generate answer from context documents using LLM.
@@ -28,7 +26,10 @@ def generate_answer(
 
     Returns:
         Generation: Generated answer
+
     """
+    if context_chunks is None:
+        context_chunks = []
     if not question:
         raise ValueError("Question and context required")
 
@@ -89,10 +90,10 @@ def generate_answer(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")
         logger.info(f"Appendix documents: {context_chunks}")
         logger.info(f"Work memory: {work_memory}")
-        logger.info(f"Answer: {response.answer}")
-
-        return response
 
     except Exception as e:
         logger.error(f"Answer generation failed: {e!s}")
         raise
+    else:
+        logger.info(f"Answer: {response.answer}")
+        return response

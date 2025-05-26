@@ -6,7 +6,7 @@ from langchain_core.documents import Document
 from langchain_core.exceptions import OutputParserException
 
 from utils.logger import logger
-from utils.llm_manager import _get_llm
+from utils.Models import _get_llm
 from classes.DocumentAssessment import DocumentAssessment, AnnotatedDocumentEvl
 
 GRADING_PROMPT = """
