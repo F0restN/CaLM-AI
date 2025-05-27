@@ -43,10 +43,10 @@ class RequestBody(BaseModel):
         le=10,
         description="Maximum number of documents to retrieve"
     )
-    threshold: float = Field(
-        default=0.85,
-        ge=0.0,
-        le=1.0,
+    threshold: int = Field(
+        default=3,
+        ge=1,
+        le=10,
         description="Document relevance threshold"
     )
     temperature: float = Field(

@@ -1,7 +1,8 @@
 import asyncio
-import pprint
 
 from main import GraphState, calm_agent
+from classes.ChatSession import ChatSessionFactory
+from langgraph.pregel.io import AddableValuesDict
 
 
 async def test_basic_workflow():
@@ -9,14 +10,17 @@ async def test_basic_workflow():
     # Create test state
     test_state = GraphState(
         user_query="What are the symptoms of dementia?",
-        chat_session=[],
-        model="deepseek-v3",
-        intermediate_model="qwen2.5:14b",
-        threshold=0.7,
-        max_retries=2,
-        doc_number=3,
-        temperature=0.1,
         query_message="What are the symptoms of dementia?",
+        chat_session=ChatSessionFactory(
+            messages=[],
+            max_messages=6, 
+        ),
+        model="deepseek-chat",
+        intermediate_model="qwen3:14b",
+        threshold=3,
+        max_retries=1,
+        doc_number=3,
+        temperature=0.3,
     )
 
     print("🚀 Starting workflow test...")
@@ -24,13 +28,13 @@ async def test_basic_workflow():
 
     try:
         # Run the workflow
-        final_state = None
+        final_state: AddableValuesDict
         async for state_update in calm_agent.astream(test_state.model_dump(), stream_mode="values"):
-            print(f"📝 State update: {list(state_update.keys())}")
+            # print(f"📝 State update: {list(state_update.keys())}")
             final_state = state_update
 
         print("✅ Workflow completed successfully!")
-        print(f"Final answer: {final_state}")
+        print(f"Final answer: {final_state.get('final_answer', None)}")
 
         return final_state
 

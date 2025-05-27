@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 
 class MessageRole(str, Enum):
@@ -43,63 +43,66 @@ class StandardFormatter(MessageFormatter):
         return "\n".join(conversation)
 
 
-# Main ChatSession Class
-class ChatSessionFactory:
+class ChatSessionFactory(BaseModel):
     """Factory for creating, managing and formatting chat sessions."""
 
-    def __init__(
-        self,
-        messages: list[BaseChatMessage] | None = None,
-        max_messages: int | None = None,
-        formatter: MessageFormatter | None = None,
-    ) -> None:
-        """Initialize the chat session."""
-        self._messages: list[BaseChatMessage] = messages or []
-        self._formatter = formatter or StandardFormatter()
-        self._max_messages: int = max_messages or 6
+    max_messages: int = 6
+    formatter: MessageFormatter = StandardFormatter()
+    messages: list[BaseChatMessage] = []
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @field_validator("messages", mode="after")
     @classmethod
-    def validate_messages(cls) -> list[BaseChatMessage]:
-        """Validate messages."""
-        if cls._max_messages and len(cls._messages) > cls._max_messages:
-            cls._messages = cls._messages[-cls._max_messages:]
-        return cls._messages
+    def validate_messages(cls, v: list[BaseChatMessage], info: ValidationInfo) -> list[BaseChatMessage]:
+        """Validate messages and enforce max_messages limit."""
+        max_msgs = info.data["max_messages"]
+        if max_msgs and len(v) > max_msgs:
+            return v[-max_msgs:]
+        return v
 
-    def get_latest_user_message(self) -> BaseChatMessage:
-        """Get the latest user message."""
-        for message in reversed(self._messages):
-            if message.role == MessageRole.USER:
-                return message
-        return None
+    def get_latest_user_message(self, *, last_n: int = 1) -> BaseChatMessage:
+        """Get the latest user message. If last_n is greater than 1, return the last n user messages."""
+        if len(self.messages) == 0:
+            return None
+
+        user_messages = [msg for msg in reversed(self.messages) if msg.role == MessageRole.USER]
+        if len(user_messages) < last_n:
+            return user_messages[0]
+        return user_messages[-last_n]
 
     def get_latest_assistant_message(self) -> BaseChatMessage:
         """Get the latest assistant message."""
-        for message in reversed(self._messages):
+        for message in reversed(self.messages):
             if message.role == MessageRole.ASSISTANT:
                 return message
         return None
 
     def get_latest_conversation_pair(self) -> tuple[BaseChatMessage, BaseChatMessage]:
         """Get the latest conversation in sequence. Must start with a user message and followed by an assistant message."""
-        user_message = self.get_latest_user_message()
+        user_message = self.get_latest_user_message(last_n=2)
         assistant_message = self.get_latest_assistant_message()
         if user_message and assistant_message:
             return user_message, assistant_message
         return None
 
-    def get_formatted_conversation(self, attriute: Literal["messages", "latest_conversation_pair"] = "messages") -> str:
+    def get_formatted_conversation(self, attribute: Literal["messages", "latest_conversation_pair"] = "messages") -> str:
         """Get formatted conversation using the current formatter."""
-        if attriute == "messages":
-            return self._formatter.format(self._messages)
-        if attriute == "latest_conversation_pair":
-            return self._formatter.format(self.get_latest_conversation_pair())
-        raise ValueError(f"Invalid attribute: {attriute}")
+        if attribute == "messages":
+            return self.formatter.format(self.messages)
+        if attribute == "latest_conversation_pair":
+            conversation_pair = self.get_latest_conversation_pair()
+            if conversation_pair:
+                return self.formatter.format(list(conversation_pair))
+            return ""
+        raise ValueError(f"Invalid attribute: {attribute}")
 
     def set_formatter(self, formatter: MessageFormatter) -> None:
         """Set a new formatting strategy."""
-        self._formatter = formatter
+        self.formatter = formatter
 
     def __str__(self) -> str:
         """Get formatted conversation using the current formatter."""
         return self.get_formatted_conversation("messages")
+

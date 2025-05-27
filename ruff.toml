@@ -34,6 +34,7 @@ ignore = [
     "TRY003",
     "PLR2004", # Use variable as parameter not constant
     "D106", # Docstring is missing
+    "D101", # Missing docstring in public class
 ]
 
 [format]
