@@ -19,3 +19,6 @@ class AnnotatedDocumentEvl(DocumentAssessment):
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __str__(self) -> str:
+        return f"Title: {self.document.metadata.get('title', 'Untitled Document')}; Content: {self.document.page_content}"

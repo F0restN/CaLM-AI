@@ -143,21 +143,12 @@ def expand_query(state: GraphState) -> dict:
 
 def generate_answer_unified(state: GraphState) -> dict:
     """Unified answer generation node - handles both direct and retrieval-based responses."""
-    # Determine if we have retrieved documents (RAG mode vs direct mode)
-    has_context = state.filtered_docs and len(state.filtered_docs) > 0
-
-    # Use retrieved documents if available, otherwise empty list
-    context_chunks = [doc.document for doc in state.filtered_docs] if has_context else []
-
-    # Set informal tone for direct answers (no retrieval), formal for RAG answers
-    is_informal = not has_context
-
     answer = generate_answer(
         question=state.user_query,
-        context_chunks=context_chunks,
+        context_chunks=state.filtered_docs,
         work_memory=state.chat_session.get_formatted_conversation("messages"),
         temperature=state.temperature,
-        isInformal=is_informal,
+        isInformal=not state.adaptive_decision.require_extra_re,
     )
 
     return {"final_answer": answer}

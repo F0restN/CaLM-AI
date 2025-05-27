@@ -1,17 +1,17 @@
-from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 
+from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import AIGeneration, Generation
 from utils.logger import logger
 from utils.Models import _get_deepseek
-from utils.PROMPT import BASIC_PROMPT, CLAUDE_EMOTIONAL_SUPPORT_PROMPT
+from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT
 
 
 def generate_answer(
     question: str,
-    context_chunks: list[Document] | None = None,
+    context_chunks: list[AnnotatedDocumentEvl] | None = None,
     work_memory: str = "",
-    temperature: float = 0,
+    temperature: float = 0.3,
     *,
     isInformal: bool = False,
 ) -> Generation:
@@ -28,19 +28,36 @@ def generate_answer(
         Generation: Generated answer
 
     """
+    # Validation
     if context_chunks is None:
         context_chunks = []
     if not question:
         raise ValueError("Question and context required")
 
-    context_page_content = "\n".join(
-        doc.page_content for doc in context_chunks)
+    # Craft context in RAG
+    context_page_content: str = ""
+    source_list = []
+    seen_urls = set()
+    for i, doc in enumerate(context_chunks):
+        title = doc.document.metadata.get("title", "Untitled Document")
+        content = doc.document.page_content
+        url = doc.document.metadata.get("url", "") or doc.document.metadata.get("source", "")
 
+        if url not in seen_urls:
+            seen_urls.add(url)
+            source_list.append({
+                "index": i + 1,
+                "url": url,
+                "title": title,
+            })
+            context_page_content += (f"Index: {i + 1}; Title: {title}; Content: {content} \n")
+
+    # Initialize LLM
     llm = _get_deepseek("deepseek-chat", temperature)
 
     prompt = PromptTemplate(
         input_variables=["context", "question", "work_memory"],
-        template=BASIC_PROMPT if isInformal else CLAUDE_EMOTIONAL_SUPPORT_PROMPT,
+        template=BASIC_PROMPT if isInformal else CALM_ADRD_PROMPT,
     )
 
     structured_llm = prompt | llm.with_structured_output(
@@ -49,23 +66,9 @@ def generate_answer(
         include_raw=False,
     )
 
+
+    # Generate answer
     try:
-        # Create a list of unique sources
-        seen_urls = set()
-        source_list = []
-
-        for doc in context_chunks:
-            url = doc.metadata.get("url", "") or doc.metadata.get("source", "")
-            title = doc.metadata.get("title", "")
-
-            # Only add if URL is not in seen_urls
-            if url not in seen_urls:
-                source_list.append({
-                    "url": url,
-                    "title": title,
-                })
-                seen_urls.add(url)
-
         response = structured_llm.invoke(
             {
                 "context": context_page_content,
@@ -74,28 +77,23 @@ def generate_answer(
             },
         )
 
-        if not isinstance(response, AIGeneration):
-            return Generation(
-                answer="Sorry, I couldn't generate an answer to your question. Please try again.",
-                follow_up_questions=[],
-                sources=[],
-            )
+        assert isinstance(response, AIGeneration), "Response is not a Generation object"
 
         response = Generation(
             **response.model_dump(),
             sources=source_list,
         )
 
-        assert isinstance(response, Generation), "Response is not a Generation object"
-
         logger.info(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")
-        logger.info(f"Appendix documents: {context_chunks}")
+        logger.info(f"Appendix documents: \n {context_page_content}")
         logger.info(f"Work memory: {work_memory}")
-
     except Exception as e:
         logger.error(f"Answer generation failed: {e!s}")
-        raise
+        return Generation(
+            answer="Sorry, I couldn't generate an answer to your question. Please try again. Error: {e!s}",
+            follow_up_questions=[],
+            sources=[],
+        )
     else:
-        # logger.info(f"Answer: {response.answer}")
         return response
