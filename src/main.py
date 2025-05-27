@@ -146,7 +146,7 @@ def generate_answer_unified(state: GraphState) -> dict:
     answer = generate_answer(
         question=state.user_query,
         context_chunks=state.filtered_docs,
-        work_memory=state.chat_session.get_formatted_conversation("messages"),
+        work_memory=state.chat_session,
         temperature=state.temperature,
         isInformal=not state.adaptive_decision.require_extra_re,
     )

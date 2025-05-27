@@ -1,5 +1,6 @@
 from langchain_core.prompts import PromptTemplate
 
+from classes.ChatSession import ChatSessionFactory
 from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import AIGeneration, Generation
 from utils.logger import logger
@@ -10,7 +11,7 @@ from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT
 def generate_answer(
     question: str,
     context_chunks: list[AnnotatedDocumentEvl] | None = None,
-    work_memory: str = "",
+    work_memory: ChatSessionFactory | None = None,
     temperature: float = 0.3,
     *,
     isInformal: bool = False,
@@ -35,6 +36,7 @@ def generate_answer(
         raise ValueError("Question and context required")
 
     # Craft context in RAG
+    working_memory_content = work_memory.get_formatted_conversation("messages")
     context_page_content: str = ""
     source_list = []
     seen_urls = set()
@@ -73,7 +75,7 @@ def generate_answer(
             {
                 "context": context_page_content,
                 "question": question,
-                "work_memory": work_memory,
+                "work_memory": working_memory_content,
             },
         )
 
@@ -83,6 +85,10 @@ def generate_answer(
             **response.model_dump(),
             sources=source_list,
         )
+
+        if not work_memory or len(work_memory.messages) <= 1:
+            answer_with_greeting = f"Hi, I'm your Caregiving Assistant. I hope you have a wonderful day! \n {response.answer}"
+            response.answer = answer_with_greeting
 
         logger.info(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")
