@@ -1,31 +1,20 @@
-from pydantic import BaseModel, Field
 from langchain_core.documents import Document
+from pydantic import BaseModel, Field
 
 
 class DocumentAssessment(BaseModel):
-    relevance_score: float = Field(description="how relevant document to user query, scale from 0 to 1 in 3 decimals")
-    reasoning: str = Field(description="reasons supporting relevance score")
-    missing_topics: list[str] = Field(description="missing topics from user query")
+    """LLM-as-judge for document relevance evaluation. Given a user query and a document, the LLM will evaluate the relevance, reasoning and missing topics of the document to the query."""
+
+    relevance_score: int = Field(description="how relevant document to user query, scale from 1 to 5")
+    reasoning: str = Field(description="reasons supporting relevance score about why so")
+    missing_topics: list[str] = Field(description="3 missing topics given document to user query, if any")
 
     class Config:
-        arbitrary_types_allowed = True    
+        arbitrary_types_allowed = True
 
-    @property
-    def metadata(self):
-        return self.document.metadata
+class AnnotatedDocumentEvl(DocumentAssessment):
+    """Annotated document combined with evaluation result."""
 
-    @property
-    def page_content(self):
-        return self.document.page_content
-
-    def __str__(self):
-        return f"Document: {self.document}\n Relevance Score: {self.relevance_score}\n Reasoning: {self.reasoning}\n"
-
-    def __call__(self, *args, **kwargs):
-        return self
-
-
-class AnnotatedDocumentEvl(DocumentAssessment):    
     document: Document = Field(description="Evaluated document itself")
 
     class Config:

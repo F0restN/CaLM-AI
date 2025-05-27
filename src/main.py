@@ -4,6 +4,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from langchain_core.documents import Document
 from langgraph.graph import END, StateGraph
 from langgraph.pregel.io import AddableValuesDict
 from pydantic import BaseModel, Field
@@ -14,6 +15,7 @@ from checkpoints.query_extander import query_extander
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
 from classes.ChatSession import BaseChatMessage, ChatSessionFactory
+from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import Generation
 from classes.RequestBody import RequestBody
 from classes.VectorStore import VectorStore
@@ -30,12 +32,12 @@ class GraphState(BaseModel):
 
     # Runtime Input parameters
     user_query: str = Field(..., description="User's input query")
-    # chat_session: list[BaseChatMessage] = Field(default_factory=list, description="Chat session history, used for work memory")
+    chat_session: ChatSessionFactory = Field(description="Maintaining the conversation history in current session")
 
     # Hyperparameters
     model: str = Field(default="deepseek-v3", description="LLM model to use for answer generation")
     intermediate_model: str = Field(default="qwen2.5:14b", description="Intermediate model for auxilary tasks, such as query expansion, document grading, etc.")
-    threshold: float = Field(default=0.6, ge=0.0, le=1.0, description="Relevance threshold")
+    threshold: int = Field(default=3, ge=1, le=10, description="Relevance threshold")
     max_retries: int = Field(default=3, ge=1, description="Maximum retry attempts")
     doc_number: int = Field(default=5, ge=1, description="Number of documents to retrieve")
     temperature: float = Field(default=0.3, ge=0.0, le=1.0, description="Model temperature")
@@ -44,9 +46,8 @@ class GraphState(BaseModel):
     query_message: str = Field(default="", description="Current query message, original from user query modified by query expansion")
     final_answer: Generation | None = Field(default=None, description="Final generated answer")
     retrieved_docs: list = Field(default_factory=list, description="Retrieved documents")
-    filtered_docs: list = Field(default_factory=list, description="Filtered documents")
-    missing_topics: list = Field(default_factory=list, description="Missing topics for query expansion")
-    chat_session: ChatSessionFactory = Field(description="Maintaining the conversation history in current session")
+    filtered_docs: list[AnnotatedDocumentEvl] = Field(default_factory=list, description="Filtered documents")
+    missing_topics: list[str] = Field(default_factory=list, description="Missing topics for query expansion")
 
     # Routing function
     adaptive_decision: Optional[AdaptiveDecision] = Field(default=None, description="Adaptive decision result, whether to use extra knowledge about ADRD. Determined by user's query")  # noqa: UP007
@@ -106,8 +107,8 @@ async def grade_documents(state: GraphState) -> dict:
         temperature=state.temperature,
     )
 
-    filtered = state.filtered_docs.copy() if state.filtered_docs else []
-    missing = []
+    filtered: list[AnnotatedDocumentEvl] = state.filtered_docs.copy() if state.filtered_docs else []
+    missing: list[str] = []
     for doc in graded:
         if doc.relevance_score >= state.threshold:
             # Remove duplicates
@@ -146,7 +147,7 @@ def generate_answer_unified(state: GraphState) -> dict:
     has_context = state.filtered_docs and len(state.filtered_docs) > 0
 
     # Use retrieved documents if available, otherwise empty list
-    context_chunks = state.filtered_docs if has_context else []
+    context_chunks = [doc.document for doc in state.filtered_docs] if has_context else []
 
     # Set informal tone for direct answers (no retrieval), formal for RAG answers
     is_informal = not has_context
@@ -223,8 +224,6 @@ calm_agent = setup_workflow()
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody) -> Generation:
     """Maintain a callable API for the Calm ADRD Agent to pipeline."""
-    logger.info(f"request: {request}")
-
     # Create initial state using Pydantic model
     initial_state = GraphState(
         user_query=request.user_query,
@@ -246,8 +245,6 @@ async def calm_adrd_agent_api(request: RequestBody) -> Generation:
         final_state: AddableValuesDict | None = None
         async for state_update in calm_agent.astream(initial_state.model_dump(), stream_mode="values"):
             final_state = state_update
-
-        logger.info(f"Final state: {final_state}")
 
         # Make sure final_answer is not empty
         assert final_state is not None, "Final state is None"

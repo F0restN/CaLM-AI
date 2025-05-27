@@ -86,6 +86,8 @@ def generate_answer(
             sources=source_list,
         )
 
+        assert isinstance(response, Generation), "Response is not a Generation object"
+
         logger.info(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")
         logger.info(f"Appendix documents: {context_chunks}")
@@ -95,5 +97,5 @@ def generate_answer(
         logger.error(f"Answer generation failed: {e!s}")
         raise
     else:
-        logger.info(f"Answer: {response.answer}")
+        # logger.info(f"Answer: {response.answer}")
         return response

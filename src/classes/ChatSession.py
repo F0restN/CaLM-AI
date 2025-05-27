@@ -64,6 +64,9 @@ class ChatSessionFactory(BaseModel):
 
     def get_latest_user_message(self, *, last_n: int = 1) -> BaseChatMessage:
         """Get the latest user message. If last_n is greater than 1, return the last n user messages."""
+        if len(self.messages) == 0:
+            return None
+
         user_messages = [msg for msg in reversed(self.messages) if msg.role == MessageRole.USER]
         if len(user_messages) < last_n:
             return user_messages[0]
