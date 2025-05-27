@@ -10,7 +10,7 @@ ADAPTIVE_RAG_DECISION_PROMPT = """
 
 You are expert in routing questions to the right knowledge base.
 
-'research' contains documents from PubMed and PubMed Central and other professional journals for research-related and serious and official questions. Practical guidlines from NIH and Family care giver alliance data are included in research data.
+'research' contains documents from PubMed and PubMed Central and other professional journals for research-related and serious and official questions. Practical guidlines from NIH and Family caregiver alliance data are included in research data.
 'peer_support'  contains data from social media like AgeCare forum and Reddit, they are user shared stories for peer-support related questions. User experience and story sharing data from AgingCare and Alzconnect is included in peer support knowledge base.
 
 Given those information above, you will determine whether extra information from those two knowledge base will help model
@@ -20,7 +20,7 @@ Here is the conversation history between user and assistant, user could use impl
 {latest_conversation_pair}
 
 Answer format:
-1. After your assessment, if you decide user's question: {question}, is not related to any medical or healthcare related questions about Alzheimer's disease and dementia, response 'False' for 'require_extra_re', otherwise 'True'.
+1. After your assessment, unless you're very sure that user's question: {question}, is not related to any medical or healthcare related questions about Alzheimer's disease and dementia and nothing related appeared in context, response 'False' for 'require_extra_re', otherwise 'True'.
 2. If "require_extra_re" is True, determine which knowledge base is most relevant to user question, either 'research' or 'peer_support'.
 3. If "require_extra_re" is False, response 'NA' for 'knowledge_base'.
 """
