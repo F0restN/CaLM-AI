@@ -144,7 +144,7 @@ def expand_query(state: GraphState) -> dict:
 def generate_answer_unified(state: GraphState) -> dict:
     """Unified answer generation node - handles both direct and retrieval-based responses."""
     answer = generate_answer(
-        question=state.user_query,
+        question=state.query_message,
         context_chunks=state.filtered_docs,
         work_memory=state.chat_session,
         temperature=state.temperature,

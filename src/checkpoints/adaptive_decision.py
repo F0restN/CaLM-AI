@@ -16,11 +16,11 @@ You are expert in routing questions to the right knowledge base.
 Given those information above, you will determine whether extra information from those two knowledge base will help model
 answer user'squestion: {question}
 
-Here is the conversation history between user and assistant, use it for context:
+Here is the conversation history between user and assistant, user could use implicite expression refers to words and content in context. So you should properly assess it and use the following context:
 {latest_conversation_pair}
 
 Answer format:
-1. If user's question: {question}, is not related to any medical or healthcare related questions about Alzheimer's disease and dementia, response 'False' for 'require_extra_re', otherwise 'True'.
+1. After your assessment, if you decide user's question: {question}, is not related to any medical or healthcare related questions about Alzheimer's disease and dementia, response 'False' for 'require_extra_re', otherwise 'True'.
 2. If "require_extra_re" is True, determine which knowledge base is most relevant to user question, either 'research' or 'peer_support'.
 3. If "require_extra_re" is False, response 'NA' for 'knowledge_base'.
 """
@@ -28,7 +28,7 @@ Answer format:
 
 def adaptive_rag_decision(
     query: str,
-    model: str = "qwen2.5-coder:7b",
+    model: str = "qwen3:14b",
     temperature: float = 0.1,
     latest_conversation_pair: str = "",
 ) -> AdaptiveDecision:
@@ -48,6 +48,8 @@ def adaptive_rag_decision(
         OutputParserException: If output parsing fails
 
     """
+    logger.info(f"Adaptive decision | {query} | {latest_conversation_pair}")
+
     prompt = PromptTemplate(
         template=ADAPTIVE_RAG_DECISION_PROMPT,
         input_variables=["question", "latest_conversation_pair"],
