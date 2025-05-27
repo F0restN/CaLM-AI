@@ -4,7 +4,7 @@ from langchain_core.prompts import PromptTemplate
 
 from classes.AdaptiveDecision import AdaptiveDecision
 from utils.logger import logger
-from utils.Models import _get_llm, _get_deepseek
+from utils.Models import _get_deepseek, _get_llm
 
 ADAPTIVE_RAG_DECISION_PROMPT = """
 
