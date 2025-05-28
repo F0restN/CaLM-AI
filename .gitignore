@@ -49,3 +49,7 @@ wandb/
 
 .cursorignore
 .cursorrules
+
+# Package management
+pyproject.toml
+uv.lock

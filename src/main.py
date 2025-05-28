@@ -215,6 +215,8 @@ calm_agent = setup_workflow()
 @fastapi_app.post("/ask-calm-adrd-agent")
 async def calm_adrd_agent_api(request: RequestBody) -> Generation:
     """Maintain a callable API for the Calm ADRD Agent to pipeline."""
+    logger.info(f"Received request of message: {request.chat_session}")
+
     # Create initial state using Pydantic model
     initial_state = GraphState(
         user_query=request.user_query,
@@ -244,18 +246,18 @@ async def calm_adrd_agent_api(request: RequestBody) -> Generation:
         return final_state.get("final_answer", "")
     except AssertionError as e:
         logger.error(f"Assertion error in calm_agent stream: {e!s}")
-        return {
-            "answer": f"Sorry, an error occurred while processing your request. Please try again later.{e}",
-            "sources": [],
-            "follow_up_questions": [],
-        }
+        return Generation(
+            answer=f"Sorry, an error occurred while processing your request. Please try again later.{e}",
+            sources=[],
+            follow_up_questions=[],
+        )
     except Exception as e:
         logger.error(f"Error in calm_agent stream: {e!s}")
-        return {
-            "answer": f"Sorry, an error occurred while processing your request. Please try again later.{e}",
-            "sources": [],
-            "follow_up_questions": [],
-        }
+        return Generation(
+            answer=f"Sorry, an error occurred while processing your request. Please try again later.{e}",
+            sources=[],
+            follow_up_questions=[],
+        )
 
 
 @fastapi_app.get("/server-health-check")
