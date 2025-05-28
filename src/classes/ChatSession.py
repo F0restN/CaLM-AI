@@ -56,10 +56,12 @@ class ChatSessionFactory(BaseModel):
     @field_validator("messages", mode="after")
     @classmethod
     def validate_messages(cls, v: list[BaseChatMessage], info: ValidationInfo) -> list[BaseChatMessage]:
-        """Validate messages and enforce max_messages limit."""
+        """Validate messages and enforce max_messages limit. If max_messages is set, return the first message plus the last max_messages - 1 messages."""
         max_msgs = info.data["max_messages"]
         if max_msgs and len(v) > max_msgs:
-            return v[-max_msgs:]
+            le = len(v)
+            # Return the first message plus last max_messages - 1 messages
+            v = v[:1] + v[le - max_msgs + 1:]
         return v
 
     def get_latest_user_message(self, *, last_n: int = 1) -> BaseChatMessage:
