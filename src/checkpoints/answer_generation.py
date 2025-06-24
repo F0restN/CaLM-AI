@@ -4,8 +4,8 @@ from classes.ChatSession import ChatSessionFactory
 from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import AIGeneration, Generation
 from utils.logger import logger
-from utils.Models import _get_deepseek
-from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT
+from utils.Models import _get_deepseek, _get_llm
+from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT, TEST_PROMT_1
 
 
 def generate_answer(
@@ -56,10 +56,11 @@ def generate_answer(
 
     # Initialize LLM
     llm = _get_deepseek("deepseek-chat", temperature)
+    # llm = _get_llm("calm-7b:latest", temperature)
 
     prompt = PromptTemplate(
         input_variables=["context", "question", "work_memory"],
-        template=BASIC_PROMPT if isInformal else CALM_ADRD_PROMPT,
+        template=BASIC_PROMPT if isInformal else TEST_PROMT_1,
     )
 
     structured_llm = prompt | llm.with_structured_output(
@@ -86,9 +87,9 @@ def generate_answer(
             sources=source_list,
         )
 
-        if not work_memory or len(work_memory.messages) <= 1:
-            answer_with_greeting = f"Hi, I'm your Caregiving Assistant. I hope you have a wonderful day! \n {response.answer}"
-            response.answer = answer_with_greeting
+        # if not work_memory or len(work_memory.messages) <= 1:
+        #     answer_with_greeting = f"Hi, I'm your Caregiving Assistant. I hope you have a wonderful day! \n {response.answer}"
+        #     response.answer = answer_with_greeting
 
         logger.info(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")

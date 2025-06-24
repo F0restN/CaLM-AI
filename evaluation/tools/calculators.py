@@ -81,7 +81,8 @@ class EvalCalculatorFactory(BaseModel):
 
         """
         bert = evaluate.load("bertscore")
-        return bert.compute(predictions=self.predictions, references=self.references, model_type=model_type, device="cuda")
+        return bert.compute(predictions=self.predictions, references=self.references, model_type=model_type, device="cuda", lang="en")
+        # return bert.compute(predictions=self.predictions, references=self.references, device="cuda", lang="en")
 
 
 class RecallCalculatorFactory(BaseModel):
@@ -156,4 +157,4 @@ if __name__ == "__main__":
 
     calculator = EvalCalculatorFactory(predictions=pred, references=ref)
 
-    print(calculator.bert())
+    print(calculator.char_f())

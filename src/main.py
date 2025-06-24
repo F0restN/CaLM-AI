@@ -4,9 +4,8 @@ from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from langchain_core.documents import Document
 from langgraph.graph import END, StateGraph
-from langgraph.pregel.io import AddableValuesDict
+from langgraph.pregel.io import AddableValuesDict  # noqa: TC002
 from pydantic import BaseModel, Field
 
 from checkpoints.adaptive_decision import adaptive_rag_decision
@@ -14,7 +13,7 @@ from checkpoints.answer_generation import generate_answer
 from checkpoints.query_extander import query_extander
 from checkpoints.retrieval_grading import grade_retrieval_batch
 from classes.AdaptiveDecision import AdaptiveDecision
-from classes.ChatSession import BaseChatMessage, ChatSessionFactory
+from classes.ChatSession import ChatSessionFactory
 from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import Generation
 from classes.RequestBody import RequestBody
@@ -64,8 +63,8 @@ class GraphState(BaseModel):
 
 
 # Initialize knowledge base connections
-p_kb = VectorStore(collection_name="peer_support_kb")
-r_kb = VectorStore(collection_name="research_kb")
+p_kb = VectorStore(collection_name="peer_support")
+r_kb = VectorStore(collection_name="clinical_insights")
 
 def detect_intention(state: GraphState) -> dict:
     """User intention detection node. Determine whether to use extra knowledge about ADRD."""
@@ -143,6 +142,8 @@ def expand_query(state: GraphState) -> dict:
 
 def generate_answer_unified(state: GraphState) -> dict:
     """Unified answer generation node - handles both direct and retrieval-based responses."""
+    assert state.adaptive_decision is not None, "Adaptive decision is None"
+
     answer = generate_answer(
         question=state.query_message,
         context_chunks=state.filtered_docs,
