@@ -64,8 +64,8 @@ class GraphState(BaseModel):
 
 
 # Initialize knowledge base connections
-p_kb = VectorStore(collection_name="peer_support_kb")
-r_kb = VectorStore(collection_name="research_kb")
+p_kb = VectorStore(collection_name="peer_support")
+r_kb = VectorStore(collection_name="clinical_insights")
 
 def detect_intention(state: GraphState) -> dict:
     """User intention detection node. Determine whether to use extra knowledge about ADRD."""
