@@ -5,7 +5,7 @@ from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import AIGeneration, Generation
 from utils.logger import logger
 from utils.Models import _get_deepseek, _get_llm
-from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT, TEST_PROMT_1
+from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT
 
 
 def generate_answer(
@@ -60,7 +60,7 @@ def generate_answer(
 
     prompt = PromptTemplate(
         input_variables=["context", "question", "work_memory"],
-        template=BASIC_PROMPT if isInformal else TEST_PROMT_1,
+        template=BASIC_PROMPT if isInformal else CALM_ADRD_PROMPT,
     )
 
     structured_llm = prompt | llm.with_structured_output(

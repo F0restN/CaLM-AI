@@ -10,13 +10,13 @@ ADAPTIVE_RAG_DECISION_PROMPT = """
 
 You are expert in routing questions to the right knowledge base.
 
-'research' contains documents from PubMed and PubMed Central and other professional journals for research-related and serious and official questions. Practical guidlines from NIH and Family caregiver alliance data are included in research data.
+'research' contains documents from PubMed and PubMed Central and other professional journals for research-related and serious and official questions. Practical guidelines from NIH and Family caregiver alliance data are included in research data.
 'peer_support'  contains data from social media like AgeCare forum and Reddit, they are user shared stories for peer-support related questions. User experience and story sharing data from AgingCare and Alzconnect is included in peer support knowledge base.
 
 Given those information above, you will determine whether extra information from those two knowledge base will help model
-answer user'squestion: {question}
+answer user's question: {question}
 
-Here is the conversation history between user and assistant, user could use implicite expression refers to words and content in context. So you should properly assess it and use the following context:
+Here is the conversation history between user and assistant, user could use implicit expression refers to words and content in context. So you should properly assess it and use the following context:
 {latest_conversation_pair}
 
 Answer format:

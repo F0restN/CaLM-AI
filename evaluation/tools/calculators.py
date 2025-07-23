@@ -7,8 +7,8 @@ from pydantic import BaseModel, field_validator, model_validator
 ## ROUGE Evaluation
 
 class EvalCalculatorFactory(BaseModel):
-    predictions: Any
-    references: Any
+    predictions: Any | None = None
+    references: Any | None = None
 
     @field_validator("predictions", "references", mode="after")
     @classmethod
@@ -17,6 +17,11 @@ class EvalCalculatorFactory(BaseModel):
         if not isinstance(value, list):
             return [value]
         return value
+    
+    
+    def call(self, metric_name: str) -> float | None:
+        """Call the metric function."""
+        return getattr(self, metric_name)()
 
     def rouge(self) -> dict | None:
         """Calculate the ROUGE score for a list of predictions and references.
@@ -67,6 +72,18 @@ class EvalCalculatorFactory(BaseModel):
         return chrf.compute(predictions=self.predictions, references=self.references)
 
 
+    # Google BLEU Evaluation
+    def google_bleu(self) -> float | None:
+        """Calculate the Google BLEU score for a list of predictions and references.
+
+        Returns:
+            float: Google BLEU score
+        
+        """
+        google_bleu = evaluate.load("google_bleu")
+        return google_bleu.compute(predictions=self.predictions, references=self.references)['google_bleu']
+
+    
     ## Calculate BERT Score
     def bert(self, model_type: str = "microsoft/deberta-xlarge-mnli") -> dict | None:
         """Calculate the BERT score for a list of predictions and references.
@@ -85,6 +102,15 @@ class EvalCalculatorFactory(BaseModel):
         # return bert.compute(predictions=self.predictions, references=self.references, device="cuda", lang="en")
 
 
+    def meteor(self) -> float | None:
+        """Calculate the Meteor score for a list of predictions and references.
+
+        Returns:
+            float: Meteor score
+        """
+        meteor = evaluate.load("meteor")
+        return meteor.compute(predictions=self.predictions, references=self.references)['meteor'] or 0.0
+    
 class RecallCalculatorFactory(BaseModel):
     predictions: Any
     references: Any
@@ -152,9 +178,9 @@ class RecallCalculatorFactory(BaseModel):
 
 if __name__ == "__main__":
 
-    pred = ["I'm happy"]
-    ref = ["He's happy"]
+    pred = ["I'm happy because today"]
+    ref = ["He's happy because today is a good day"]
 
     calculator = EvalCalculatorFactory(predictions=pred, references=ref)
 
-    print(calculator.char_f())
+    print(calculator.meteor())
