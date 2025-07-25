@@ -36,7 +36,7 @@ class EvalCalculatorFactory(BaseModel):
 
         """
         rouge = evaluate.load("rouge")
-        return rouge.compute(predictions=self.predictions, references=self.references)
+        return rouge.compute(predictions=self.predictions, references=self.references)['rouge1']
 
 
     ## BLEU Evaluation
@@ -98,7 +98,7 @@ class EvalCalculatorFactory(BaseModel):
 
         """
         bert = evaluate.load("bertscore")
-        return bert.compute(predictions=self.predictions, references=self.references, model_type=model_type, device="cuda", lang="en")
+        return bert.compute(predictions=self.predictions, references=self.references, model_type=model_type, device="cuda", lang="en")['f1']
         # return bert.compute(predictions=self.predictions, references=self.references, device="cuda", lang="en")
 
 
@@ -110,7 +110,8 @@ class EvalCalculatorFactory(BaseModel):
         """
         meteor = evaluate.load("meteor")
         return meteor.compute(predictions=self.predictions, references=self.references)['meteor'] or 0.0
-    
+
+
 class RecallCalculatorFactory(BaseModel):
     predictions: Any
     references: Any
