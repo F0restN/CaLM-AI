@@ -13,6 +13,7 @@ def generate_answer(
     context_chunks: list[AnnotatedDocumentEvl] | None = None,
     work_memory: ChatSessionFactory | None = None,
     temperature: float = 0.3,
+    model: str = "qwen3:30b-a3b",
     *,
     isInformal: bool = False,
 ) -> Generation:
@@ -55,8 +56,8 @@ def generate_answer(
             context_page_content += (f"Index: {i + 1}; Title: {title}; Content: {content} \n")
 
     # Initialize LLM
-    llm = _get_deepseek("deepseek-chat", temperature)
-    # llm = _get_llm("calm-7b:latest", temperature)
+    # llm = _get_deepseek("deepseek-chat", temperature)
+    llm = _get_llm(model, temperature)
 
     prompt = PromptTemplate(
         input_variables=["context", "question", "work_memory"],
