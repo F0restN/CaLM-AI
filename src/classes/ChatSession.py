@@ -107,4 +107,3 @@ class ChatSessionFactory(BaseModel):
     def __str__(self) -> str:
         """Get formatted conversation using the current formatter."""
         return self.get_formatted_conversation("messages")
-

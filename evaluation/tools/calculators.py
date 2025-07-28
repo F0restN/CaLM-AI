@@ -1,264 +1,187 @@
-
-from typing import List
 from math import log2
-from sentence_transformers import SentenceTransformer, util
+from typing import Any
+
+import evaluate
+from pydantic import BaseModel, field_validator, model_validator
 
 ## ROUGE Evaluation
-def calculate_rouge_scores(predictions: List[str], references: List[str]):
-    """
-    Calculate the ROUGE score for a list of predictions and references.
+
+class EvalCalculatorFactory(BaseModel):
+    predictions: Any | None = None
+    references: Any | None = None
+
+    @field_validator("predictions", "references", mode="after")
+    @classmethod
+    def validate_inputs(cls, value: list[str] | str) -> list[str]:
+        """Validate the inputs."""
+        if not isinstance(value, list):
+            return [value]
+        return value
     
-    Args:
-        predictions: List[str]
-        references: List[str]
+    
+    def call(self, metric_name: str) -> float | None:
+        """Call the metric function."""
+        return getattr(self, metric_name)()
+
+    def rouge(self) -> dict | None:
+        """Calculate the ROUGE score for a list of predictions and references.
+
+        Returns:
+            json: {
+                "rouge1": float
+                "rouge2": float
+                "rougeL": float
+                "rougeLsum": float
+            }
+
+        """
+        rouge = evaluate.load("rouge")
+        return rouge.compute(predictions=self.predictions, references=self.references)['rouge1']
+
+
+    ## BLEU Evaluation
+    def bleu(self) -> dict | None:
+        """Calculate the BLEU score for a list of predictions and references.
+
+        Returns:
+            json: {
+                "bleu": float
+                "precisions": List[float]
+                "brevity_penalty": float
+            }
+
+        """
+        bleu = evaluate.load("bleu")
+        return bleu.compute(predictions=self.predictions, references=self.references)
+
+
+    ## CHAR F Score Evaluation
+    def char_f(self) -> dict | None:
+        """Calculate the CHAR F score for a list of predictions and references.
+
+        Returns:
+            json: {
+                "score": float,
+                "char_order": int,
+                "word_order": int,
+                "beta": int
+            }
+
+        """
+        chrf = evaluate.load("chrf")
+        return chrf.compute(predictions=self.predictions, references=self.references)
+
+
+    # Google BLEU Evaluation
+    def google_bleu(self) -> float | None:
+        """Calculate the Google BLEU score for a list of predictions and references.
+
+        Returns:
+            float: Google BLEU score
         
-    Returns:
-        json: {
-            "rouge1": float
-            "rouge2": float
-            "rougeL": float
-            "rougeLsum": float
-        }
-    """
-    rouge = evaluate.load("rouge")
-    return rouge.compute(predictions=predictions, references=references)
+        """
+        google_bleu = evaluate.load("google_bleu")
+        return google_bleu.compute(predictions=self.predictions, references=self.references)['google_bleu']
+
+    
+    ## Calculate BERT Score
+    def bert(self, model_type: str = "microsoft/deberta-xlarge-mnli") -> dict | None:
+        """Calculate the BERT score for a list of predictions and references.
+
+        Returns:
+            json: {
+                "precision": [float, float],
+                "recall": [float, float],
+                "f1": [float, float],
+                "hashcode": str
+            }
+
+        """
+        bert = evaluate.load("bertscore")
+        return bert.compute(predictions=self.predictions, references=self.references, model_type=model_type, device="cuda", lang="en")['f1']
+        # return bert.compute(predictions=self.predictions, references=self.references, device="cuda", lang="en")
 
 
-## BLEU Evaluation
-def calculate_bleu_score(predictions: List[str], references: List[str]):
-    """
-    Calculate the BLEU score for a list of predictions and references.
-    
-    Args:
-        predictions: List[str]
-        references: List[str]
-        
-    Returns:
-        json: {
-            "bleu": float
-            "precisions": List[float]
-            "brevity_penalty": float
-        }
-    """
-    
-    bleu = evaluate.load("bleu")
-    return bleu.compute(predictions=predictions, references=references)
-    
+    def meteor(self) -> float | None:
+        """Calculate the Meteor score for a list of predictions and references.
 
-## Cosine Similarity Evaluation
-def calculate_cosine_similarity(predictions: str, references: str):
-    """
-    Calculate the cosine similarity between a list of predictions and references.
-    
-    Args:
-        predictions: List[str]
-        references: List[str]
-        
-    Returns:
-        float: The cosine similarity between the predictions and references.
-    """
-    
-    sent_trans = SentenceTransformer("BAAI/bge-base-en-v1.5", device="mps")
-
-    sim_score = util.pytorch_cos_sim(sent_trans.encode(predictions), sent_trans.encode(references))[0][0].item()
-    
-    return sim_score
+        Returns:
+            float: Meteor score
+        """
+        meteor = evaluate.load("meteor")
+        return meteor.compute(predictions=self.predictions, references=self.references)['meteor'] or 0.0
 
 
-## CHAR F Score Evaluation
-def calculate_char_f_score(predictions: List[str], references: List[str]):
-    """
-    Calculate the CHAR F score for a list of predictions and references.
-    
-    Args:
-        predictions: List[str]
-        references: List[str]
-        
-    Returns:
-        json: {
-            "score": float,
-            "char_order": int,
-            "word_order": int,
-            "beta": int
-        }
-    """
-    chrf = evaluate.load("chrf")
-    return chrf.compute(predictions=predictions, references=references)
+class RecallCalculatorFactory(BaseModel):
+    predictions: Any
+    references: Any
 
+    @field_validator("predictions", "references", mode="after")
+    @classmethod
+    def validate_inputs(cls, value: list[str] | str) -> list[str]:
+        """Validate the inputs."""
+        if not isinstance(value, list):
+            return [value]
+        return value
 
-## Calculate BERT Score
-def calculate_bert_score(predictions: List[str], references: List[str], model_type: str = "microsoft/deberta-xlarge-mnli"):
-    """
-    Calculate the BERT score for a list of predictions and references.
-    
-    Args:
-        predictions: List[str]
-        references: List[str]
-        
-    Returns:
-        json: {
-            "precision": [float, float],
-            "recall": [float, float],
-            "f1": [float, float],
-            "hashcode": str
-        }
-    """
-    bert = evaluate.load("bertscore")
-    return bert.compute(predictions=predictions, references=references, model_type=model_type, device="mps")
+    @model_validator(mode="after")
+    def validate_non_empty(self) -> "RecallCalculatorFactory":
+        """Validate that predictions and references are not empty."""
+        if not self.predictions or not self.references:
+            raise ValueError("Predictions and references cannot be empty")
+        return self
 
+    def recall(self, k: int | None = None) -> float | None:
+        """Calculate recall at k for predictions and references."""
+        preds = self.predictions[:k] if k is not None else self.predictions
+        pred_set = set(preds)
+        act_set = set(self.references)
+        return len(act_set & pred_set) / len(act_set) if act_set else None
 
-def calculate_recall(predictions: List[str], references: List[str], k: int):
-    pred_set = set(predictions[:k])
-    act_set = set(references)
-    return len(act_set & pred_set) / float(len(act_set))
-    
+    def mrr(self) -> float | None:
+        """Calculate the Mean Reciprocal Rank (MRR) for predictions and references."""
+        reference_set = set(self.references)
+        for i, pred in enumerate(self.predictions):
+            if pred in reference_set:
+                return 1.0 / (i + 1)
+        return None
 
-def calculate_mrr(predictions: List[str], references: List[str]) -> float:
-    """
-    Calculate the Mean Reciprocal Rank (MRR) for a list of predictions and references.
-    
-    MRR is a statistic measure for evaluating any process that produces a list of possible responses to a sample of queries, ordered by probability of correctness.
-    
-    Args:
-        predictions: List[str] - The list of predicted items
-        references: List[str] - The list of reference (ground truth) items
-        
-    Returns:
-        float: The Mean Reciprocal Rank score
-    """
-    if not predictions or not references:
-        return 0.0
-    
-    # Convert references to a set for faster lookup
-    reference_set = set(references)
-    
-    # Find the rank of the first correct prediction
-    for i, pred in enumerate(predictions):
-        if pred in reference_set:
-            # MRR uses 1-based ranking, so add 1 to the index
-            return 1.0 / (i + 1)
-    
-    # If no correct prediction is found
-    return 0.0
+    def average_precision(self, k: int | None = None) -> float | None:
+        """Calculate the Average Precision at K (AP@K) for predictions and references."""
+        preds = self.predictions[:k] if k is not None else self.predictions
+        reference_set = set(self.references)
+        relevant_count = 0
+        sum_precision = 0.0
+        for i, pred in enumerate(preds):
+            if pred in reference_set:
+                relevant_count += 1
+                sum_precision += relevant_count / (i + 1)
+        return round(sum_precision / relevant_count, 2) if relevant_count > 0 else None
 
+    def dcg(self, relevancy: list[float], k: int | None = None) -> float | None:
+        """Calculate the Discounted Cumulative Gain (DCG) at K for predictions and relevancy scores."""
+        if not relevancy:
+            return None
+        rel = relevancy[:k] if k is not None else relevancy
+        dcg = sum(score / log2(i + 2) for i, score in enumerate(rel) if score != 0)
+        return round(dcg, 2)
 
-def calculate_average_precision(predictions: List[str], references: List[str], k: int = None) -> float:
-    """
-    Calculate the Average Precision at K (AP@K) for a list of predictions and references.
-    
-    Average Precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each 
-    threshold, with the increase in recall from the previous threshold used as the weight.
-    
-    Args:
-        predictions: List[str] - The list of predicted items in ranked order
-        references: List[str] - The list of reference (ground truth) items
-        k: int, optional - The number of predictions to consider. If None, all predictions are considered.
-        
-    Returns:
-        float: The Average Precision score at K
-    """
-    if not predictions or not references:
-        return 0.0
-    
-    # Apply k limit if specified
-    if k is not None:
-        predictions = predictions[:k]
-    
-    # Convert references to a set for faster lookup
-    reference_set = set(references)
-    
-    # Initialize variables
-    relevant_count = 0
-    sum_precision = 0.0
-    
-    # Calculate precision at each position where a relevant item is found
-    for i, pred in enumerate(predictions):
-        if pred in reference_set:
-            relevant_count += 1
-            precision_at_i = round((relevant_count / (i + 1)), 2)
-            sum_precision += precision_at_i
-    
-    # If no relevant items were found in the predictions
-    if relevant_count == 0:
-        return 0.0
-    
-    # AP is the sum of precisions divided by the total number of relevant items
-    return round((sum_precision / relevant_count), 2)
-
-
-def calculate_dcg(predictions: List[str], relevancy: List[str], k: int = None) -> float:
-    """
-    Calculate the Discounted Cumulative Gain (DCG) at K for a list of predictions and references.
-    
-    DCG measures the usefulness, or gain, of a predicted item based on its position in the result list.
-    The gain is accumulated from the top of the result list to the bottom, with the gain of each result
-    discounted at lower ranks.
-    
-    Args:
-        predictions: List[str] - The list of predicted items in ranked order
-        references: List[str] - The list of reference (ground truth) items
-        k: int, optional - The number of predictions to consider. If None, all predictions are considered.
-        
-    Returns:
-        float: The DCG score at K
-    """
-    if not predictions or not relevancy:
-        return 0.0
-    
-    # Apply k limit if specified
-    if k is not None:
-        predictions = predictions[:k]
-    
-    # Calculate DCG
-    dcg = 0.0
-    for i, pred in enumerate(predictions):
-        # Check if prediction is relevant (exists in references)
-        if relevancy[i] != 0:
-            # Calculate gain using log2(i+1) to handle the case where i=0
-            # The +2 is because we want log2(rank+1) and rank is i+1
-            dcg += relevancy[i] / log2(i + 1 + 1)
-        # print(f"DCG@{i+1} = {dcg}")
-    
-    return round(dcg, 2)
-
-
-def calculate_ndcg(predictions: List[str], relevancy: List, ideal_relevancy: List, k: int = None) -> float:
-    """
-    Calculate the Normalized Discounted Cumulative Gain (NDCG) at K for a list of predictions and references.
-    
-    NDCG normalizes the DCG by the ideal DCG, which is the DCG of the perfect ranking.
-    
-    Args:
-        predictions: List[str] - The list of predicted items in ranked order
-        references: List[str] - The list of reference (ground truth) items
-        k: int, optional - The number of predictions to consider. If None, all predictions are considered.
-        
-    Returns:
-        float: The NDCG score at K
-    """
-    if not predictions or not relevancy or not ideal_relevancy:
-        return 0.0
-    
-    # Calculate DCG
-    dcg = calculate_dcg(predictions, relevancy, k)
-    
-    idcg = calculate_dcg(predictions[:k], ideal_relevancy, k)
-    
-    # If IDCG is 0, return 0 to avoid division by zero
-    if idcg == 0:
-        return 0.0
-    
-    # Calculate NDCG
-    ndcg = dcg / idcg
-    
-    return round(ndcg, 2)
+    def ndcg(self, relevancy: list[float], ideal_relevancy: list[float], k: int | None = None) -> float | None:
+        """Calculate the Normalized Discounted Cumulative Gain (NDCG) at K for predictions and relevancy scores."""
+        if not relevancy or not ideal_relevancy:
+            return None
+        rel = relevancy[:k] if k is not None else relevancy
+        ideal_rel = ideal_relevancy[:k] if k is not None else ideal_relevancy
+        dcg_val = self.dcg(rel)
+        idcg_val = self.dcg(ideal_rel)
+        return round(dcg_val / idcg_val, 2) if idcg_val and dcg_val is not None else None
 
 
 if __name__ == "__main__":
-    
-    pred = [1,2,3]
-    relevancy = [0,1,1]
-    ideal_relevancy = [2,2,2]
-    
-    print(calculate_ndcg(pred, relevancy, ideal_relevancy, 3))
-        
+
+    pred = ["I'm happy because today"]
+    ref = ["He's happy because today is a good day"]
+
+    calculator = EvalCalculatorFactory(predictions=pred, references=ref)
+
+    print(calculator.meteor())

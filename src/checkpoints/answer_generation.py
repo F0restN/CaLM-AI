@@ -4,7 +4,7 @@ from classes.ChatSession import ChatSessionFactory
 from classes.DocumentAssessment import AnnotatedDocumentEvl
 from classes.Generation import AIGeneration, Generation
 from utils.logger import logger
-from utils.Models import _get_deepseek
+from utils.Models import _get_deepseek, _get_llm
 from utils.PROMPT import BASIC_PROMPT, CALM_ADRD_PROMPT
 
 
@@ -13,6 +13,7 @@ def generate_answer(
     context_chunks: list[AnnotatedDocumentEvl] | None = None,
     work_memory: ChatSessionFactory | None = None,
     temperature: float = 0.3,
+    model: str = "qwen3:30b-a3b",
     *,
     isInformal: bool = False,
 ) -> Generation:
@@ -55,7 +56,8 @@ def generate_answer(
             context_page_content += (f"Index: {i + 1}; Title: {title}; Content: {content} \n")
 
     # Initialize LLM
-    llm = _get_deepseek("deepseek-chat", temperature)
+    # llm = _get_deepseek("deepseek-chat", temperature)
+    llm = _get_llm(model, temperature)
 
     prompt = PromptTemplate(
         input_variables=["context", "question", "work_memory"],
@@ -86,9 +88,9 @@ def generate_answer(
             sources=source_list,
         )
 
-        if not work_memory or len(work_memory.messages) <= 1:
-            answer_with_greeting = f"Hi, I'm your Caregiving Assistant. I hope you have a wonderful day! \n {response.answer}"
-            response.answer = answer_with_greeting
+        # if not work_memory or len(work_memory.messages) <= 1:
+        #     answer_with_greeting = f"Hi, I'm your Caregiving Assistant. I hope you have a wonderful day! \n {response.answer}"
+        #     response.answer = answer_with_greeting
 
         logger.info(
             f"Answer generation completed for question: {question}, using model: deepseek-v3-0324, temperature: {temperature}")
