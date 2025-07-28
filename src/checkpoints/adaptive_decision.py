@@ -28,8 +28,8 @@ Answer format:
 
 def adaptive_rag_decision(
     query: str,
-    model: str = "qwen3:14b",
-    temperature: float = 0.1,
+    model: str = "qwen3:4b",
+    temperature: float = 0.3,
     latest_conversation_pair: str = "",
 ) -> AdaptiveDecision:
     """Decide whether extra retrieval step is necessary for a given query.
@@ -57,8 +57,8 @@ def adaptive_rag_decision(
 
 
     # NOTE: Temparary use deepseek-chat due to ollama server issue.
-    # llm = _get_llm(model, temperature)
-    llm = _get_deepseek(model="deepseek-chat", temperature=temperature)
+    llm = _get_llm(model, temperature)
+    # llm = _get_deepseek(model="deepseek-chat", temperature=temperature)
 
     structured_llm = prompt | llm.with_structured_output(schema=AdaptiveDecision, method="function_calling", include_raw=False)
 

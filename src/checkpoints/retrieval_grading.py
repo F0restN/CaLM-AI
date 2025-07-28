@@ -30,8 +30,8 @@ Follow the schema of DocumentAssessment to structure your response.
 async def grade_retrieval(
     question: str,
     retrieved_doc: Document,
-    model: str = "qwen3:14b",
-    temperature: float = 0,
+    model: str = "qwen3:4b",
+    temperature: float = 0.3,
 ) -> AnnotatedDocumentEvl:
     """Grade the relevance of retrieved documents to a user question.
 
