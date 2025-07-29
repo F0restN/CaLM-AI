@@ -149,6 +149,7 @@ def generate_answer_unified(state: GraphState) -> dict:
         context_chunks=state.filtered_docs,
         work_memory=state.chat_session,
         temperature=state.temperature,
+        model=state.model,
         isInformal=not state.adaptive_decision.require_extra_re,
     )
 
