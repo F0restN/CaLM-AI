@@ -62,17 +62,32 @@ def adaptive_rag_decision(
 
     structured_llm = prompt | llm.with_structured_output(schema=AdaptiveDecision, method="function_calling", include_raw=False)
 
-    try:
+    res = structured_llm.invoke({"question": query, "latest_conversation_pair": latest_conversation_pair})
+
+    # Retry
+    while not isinstance(res, AdaptiveDecision):
+        logger.warning(f"Adaptive decision | {query} | Invalid response type: {type(res)} | Retrying with strict mode")
+
+        # Retry with strict mode if the response is not of type AdaptiveDecision
+        # This is to ensure that we get a valid structured output
         res = structured_llm.invoke({"question": query, "latest_conversation_pair": latest_conversation_pair})
-        logger.success(f"Adaptive decision | {res.require_extra_re} | for extra retrieval, with TKB | {res.knowledge_base}")
-    except OutputParserException as ope_err:
-        logger.error(f"Output parser exception: {ope_err} for user query: {query}, retry with strict mode")
-        return structured_llm.invoke({"question": query, "latest_conversation_pair": latest_conversation_pair}, strict=True)
-    except Exception as e:
-        logger.error(f"\nError in adaptive decision, for user query: {query} \n\n-------- \nError: {e}")
-        raise
-    else:
-        return res
+
+        if isinstance(res, AdaptiveDecision):
+            return res
+
+    return res
+
+    # try:
+    #     res = structured_llm.invoke({"question": query, "latest_conversation_pair": latest_conversation_pair})
+    #     logger.success(f"Adaptive decision | {res.require_extra_re} | for extra retrieval, with TKB | {res.knowledge_base}")
+    # except OutputParserException as ope_err:
+    #     logger.error(f"Output parser exception: {ope_err} for user query: {query}, retry with strict mode")
+    #     return structured_llm.invoke({"question": query, "latest_conversation_pair": latest_conversation_pair}, strict=True)
+    # except Exception as e:
+    #     logger.error(f"\nError in adaptive decision, for user query: {query} \n\n-------- \nError: {e}")
+    #     raise
+    # else:
+    #     return res
 
 if __name__ == "__main__":
     res = adaptive_rag_decision("how's the whether today ?", model="qwen2.5-coder:7b")
