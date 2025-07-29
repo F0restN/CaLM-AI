@@ -31,7 +31,7 @@ query_json_schema = {
 def query_extander(
     original_query: str,
     missing_topics: List[str],
-    model: str = "llama3.2",
+    model: str = "qwen3:4b",
     temperature: float = 0,
 ) -> str:
     """

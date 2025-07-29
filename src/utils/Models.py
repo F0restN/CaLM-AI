@@ -9,13 +9,17 @@ from langchain_openai.chat_models.base import BaseChatOpenAI
 
 
 @lru_cache(maxsize=1000)
-def _get_llm(model: str, temperature: float) -> BaseChatModel:
-    return ChatOllama(model=model, temperature=temperature)
-
-@lru_cache(maxsize=1000)
 def _get_deepseek(model: str, temperature: float) -> BaseChatOpenAI:
     os.environ["DEEPSEEK_API_KEY"] = os.getenv("DEEPSEEK_API")
     return ChatDeepSeek(model=model, temperature=temperature)
+
+@lru_cache(maxsize=1000)
+def _get_llm(model: str, temperature: float) -> BaseChatModel:
+    """Get the LLM model based on the model name and temperature."""
+    if model.startswith("deepseek"):
+        return _get_deepseek(model, temperature)
+
+    return ChatOllama(model=model, temperature=temperature)
 
 @lru_cache(maxsize=1000)
 def get_nomic_embedding() -> OllamaEmbeddings:

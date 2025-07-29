@@ -56,7 +56,6 @@ def generate_answer(
             context_page_content += (f"Index: {i + 1}; Title: {title}; Content: {content} \n")
 
     # Initialize LLM
-    # llm = _get_deepseek("deepseek-chat", temperature)
     llm = _get_llm(model, temperature)
 
     prompt = PromptTemplate(

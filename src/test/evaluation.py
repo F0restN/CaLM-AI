@@ -15,7 +15,7 @@ def format_response(response: Generation) -> str:
 
     return res
 
-async def call_api(query: str) -> str:
+async def call_api(query: str, model: str = "qwen3:30b-a3b", intermediate_model: str = "qwen3:4b") -> str:
     """Test the basic workflow functionality."""
     # Create test state
     test_state = GraphState(
@@ -25,8 +25,8 @@ async def call_api(query: str) -> str:
             messages=[],
             max_messages=6,
         ),
-        model="deepseek-chat",
-        intermediate_model="qwen3:14b",
+        model=model,
+        intermediate_model=intermediate_model,
         threshold=3,
         max_retries=1,
         doc_number=3,
@@ -49,8 +49,8 @@ async def call_api(query: str) -> str:
 
 
 
-async def call_api_batch(queries: list[str]) -> list[str]:
+async def call_api_batch(queries: list[str], model: str, intermediate_model: str) -> list[str]:
     return await asyncio.gather(*[
-        call_api(query=query) 
+        call_api(query=query, model=model, intermediate_model=intermediate_model)
         for query in queries
     ])
